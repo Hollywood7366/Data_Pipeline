@@ -1,0 +1,22 @@
+2025-03-02 17:54:39 - iqfeed - Connection established.
+2025-03-02 17:54:39 - iqfeed - Message sent: S,SET PROTOCOL,6.2
+2025-03-02 17:54:39 - iqfeed - Downloading data for: AAPL
+2025-03-02 17:54:39 - iqfeed - Message sent: HIT,AAPL,60,20240101 093000,20240301 160000
+2025-03-02 17:54:42 - iqfeed - Data received successfully.
+2025-03-02 17:54:42 - iqfeed - Data saved to data\AAPL_20240101_20240301_60.csv
+2025-03-02 17:54:42 - iqfeed - Downloading data for: GOOGL
+2025-03-02 17:54:42 - iqfeed - Message sent: HIT,GOOGL,60,20240101 093000,20240301 160000
+2025-03-02 17:54:44 - iqfeed - Data received successfully.
+2025-03-02 17:54:44 - iqfeed - Data saved to data\GOOGL_20240101_20240301_60.csv
+2025-03-02 17:54:44 - iqfeed - Connection closed.
+2025-03-02 17:55:05 - iqfeed - Connection established.
+2025-03-02 17:55:05 - iqfeed - Message sent: S,SET PROTOCOL,6.2
+2025-03-02 17:55:05 - iqfeed - Downloading data for: AAPL
+2025-03-02 17:55:05 - iqfeed - Message sent: HIT,AAPL,60,20240101 093000,20240301 160000
+2025-03-02 17:55:08 - iqfeed - Data received successfully.
+2025-03-02 17:55:08 - iqfeed - Data saved to data\AAPL_20240101_20240301_60.csv
+2025-03-02 17:55:08 - iqfeed - Downloading data for: GOOGL
+2025-03-02 17:55:08 - iqfeed - Message sent: HIT,GOOGL,60,20240101 093000,20240301 160000
+2025-03-02 17:55:10 - iqfeed - Data received successfully.
+2025-03-02 17:55:10 - iqfeed - Data saved to data\GOOGL_20240101_20240301_60.csv
+2025-03-02 17:55:10 - iqfeed - Connection closed.

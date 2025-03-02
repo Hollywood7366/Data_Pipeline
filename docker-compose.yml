@@ -1,0 +1,172 @@
+version: "3.9"
+networks:
+  airflow:
+
+services:
+  postgres:
+    image: postgres:13
+    container_name: postgres_airflow
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - airflow
+
+  redis:
+    image: redis:latest
+    container_name: airflow_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - airflow
+
+  questdb:
+    image: questdb/questdb:8.2.2
+    container_name: questdb_container
+    ports:
+      - "9000:9000"
+      - "8812:8812"
+      - "9009:9009" 
+    volumes:
+      - ./questdb_data:/root/.questdb/db
+    networks:
+      - airflow
+
+  initdb:
+    image: airflow-project:latest
+    env_file:
+      - airflow.env
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./files:/opt/airflow/files
+      - ./test:/opt/airflow/test
+      - ./utils:/opt/airflow/utils
+      - ./src:/opt/airflow/src
+      - ./models:/opt/airflow/models
+      - ./plugins:/opt/airflow/plugins
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: /bin/bash
+    command: -c "airflow db init && airflow db migrate && airflow users create --firstname admin --lastname admin --email admin --password admin --username admin --role Admin"
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 8s
+        max_attempts: 5
+      resources:
+        limits:
+          memory: 4G
+    networks:
+      - airflow
+
+  webserver:
+    env_file:
+      - airflow.env
+    image: airflow-project:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./files:/opt/airflow/files
+      - ./test:/opt/airflow/test
+      - ./utils:/opt/airflow/utils
+      - ./src:/opt/airflow/src
+      - ./models:/opt/airflow/models
+      - ./plugins:/opt/airflow/plugins
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: webserver
+    depends_on:
+      - initdb
+      - postgres
+      - redis
+      - questdb
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          memory: 4G
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /opt/airflow/airflow-webserver.pid ]"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    networks:
+      - airflow
+
+  scheduler:
+    image: airflow-project:latest
+    env_file:
+      - airflow.env
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./files:/opt/airflow/files
+      - ./test:/opt/airflow/test
+      - ./utils:/opt/airflow/utils
+      - ./src:/opt/airflow/src
+      - ./models:/opt/airflow/models
+      - ./plugins:/opt/airflow/plugins
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: scheduler
+    depends_on:
+      - initdb
+      - postgres
+      - redis
+      - questdb
+    deploy:
+      restart_policy:
+        condition: always
+        delay: 5s
+        window: 120s
+      resources:
+        limits:
+          memory: 4G
+    networks:
+      - airflow
+
+  worker:
+    image: airflow-project:latest
+    env_file:
+      - airflow.env
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./files:/opt/airflow/files
+      - ./test:/opt/airflow/test
+      - ./utils:/opt/airflow/utils
+      - ./src:/opt/airflow/src
+      - ./models:/opt/airflow/models
+      - ./plugins:/opt/airflow/plugins
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: celery worker
+    depends_on:
+      - initdb
+      - postgres
+      - redis
+      - questdb
+    deploy:
+      restart_policy:
+        condition: always
+        delay: 5s
+        window: 120s
+      resources:
+        limits:
+          memory: 4G
+    networks:
+      - airflow
+
+volumes:
+  postgres_data:
