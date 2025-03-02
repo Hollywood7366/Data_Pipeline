@@ -1,0 +1,28 @@
+[2025-03-02T13:14:21.554+0000] {processor.py:161} INFO - Started process (PID=86) to work on /opt/airflow/dags/test.py
+[2025-03-02T13:14:21.555+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test.py for tasks to queue
+[2025-03-02T13:14:21.557+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:14:21.557+0000] {dagbag.py:540} INFO - Filling up the DagBag from /opt/airflow/dags/test.py
+[2025-03-02T13:14:21.664+0000] {processor.py:840} INFO - DAG(s) 'questdb_crud_test' retrieved from /opt/airflow/dags/test.py
+[2025-03-02T13:14:21.689+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:14:21.689+0000] {dag.py:3047} INFO - Sync 1 DAGs
+[2025-03-02T13:14:21.702+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:14:21.702+0000] {dag.py:3834} INFO - Setting next_dagrun for questdb_crud_test to None, run_after=None
+[2025-03-02T13:14:21.722+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test.py took 0.171 seconds
+[2025-03-02T13:14:51.869+0000] {processor.py:161} INFO - Started process (PID=87) to work on /opt/airflow/dags/test.py
+[2025-03-02T13:14:51.870+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test.py for tasks to queue
+[2025-03-02T13:14:51.872+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:14:51.872+0000] {dagbag.py:540} INFO - Filling up the DagBag from /opt/airflow/dags/test.py
+[2025-03-02T13:14:51.972+0000] {processor.py:840} INFO - DAG(s) 'questdb_crud_test' retrieved from /opt/airflow/dags/test.py
+[2025-03-02T13:14:52.169+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:14:52.169+0000] {dag.py:3047} INFO - Sync 1 DAGs
+[2025-03-02T13:14:52.182+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:14:52.181+0000] {dag.py:3834} INFO - Setting next_dagrun for questdb_crud_test to None, run_after=None
+[2025-03-02T13:14:52.207+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test.py took 0.342 seconds
+[2025-03-02T13:15:22.361+0000] {processor.py:161} INFO - Started process (PID=88) to work on /opt/airflow/dags/test.py
+[2025-03-02T13:15:22.362+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test.py for tasks to queue
+[2025-03-02T13:15:22.365+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:15:22.365+0000] {dagbag.py:540} INFO - Filling up the DagBag from /opt/airflow/dags/test.py
+[2025-03-02T13:15:22.449+0000] {processor.py:840} INFO - DAG(s) 'questdb_crud_test' retrieved from /opt/airflow/dags/test.py
+[2025-03-02T13:15:22.477+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:15:22.476+0000] {dag.py:3047} INFO - Sync 1 DAGs
+[2025-03-02T13:15:22.490+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:15:22.490+0000] {dag.py:3834} INFO - Setting next_dagrun for questdb_crud_test to None, run_after=None
+[2025-03-02T13:15:22.509+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test.py took 0.153 seconds
+[2025-03-02T13:15:52.664+0000] {processor.py:161} INFO - Started process (PID=89) to work on /opt/airflow/dags/test.py
+[2025-03-02T13:15:52.665+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test.py for tasks to queue
+[2025-03-02T13:15:52.667+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:15:52.667+0000] {dagbag.py:540} INFO - Filling up the DagBag from /opt/airflow/dags/test.py
+[2025-03-02T13:15:52.752+0000] {processor.py:840} INFO - DAG(s) 'questdb_crud_test' retrieved from /opt/airflow/dags/test.py
+[2025-03-02T13:15:52.781+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:15:52.781+0000] {dag.py:3047} INFO - Sync 1 DAGs
+[2025-03-02T13:15:52.794+0000] {logging_mixin.py:188} INFO - [2025-03-02T13:15:52.794+0000] {dag.py:3834} INFO - Setting next_dagrun for questdb_crud_test to None, run_after=None
+[2025-03-02T13:15:52.817+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test.py took 0.156 seconds
