@@ -1,5 +1,5 @@
 venv
 .vscode
 __pycache__
-/data/*
-questdb_data
+data/
+questdb_data/
