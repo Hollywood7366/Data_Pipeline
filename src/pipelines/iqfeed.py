@@ -1,4 +1,6 @@
 from typing import List
+
+import pandas as pd
 from utils.iqfeed_utils import (
     connect_to_socket, send_message_to_socket, receive_data, clean_data, data_to_csv,
     close_socket, establish_live_feed
