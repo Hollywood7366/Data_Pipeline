@@ -4,6 +4,7 @@ __pycache__/
 data/
 questdb_data/
 *.json
+logs/
 
 *.pyc
 *.pyo
