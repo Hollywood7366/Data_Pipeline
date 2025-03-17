@@ -2,7 +2,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.database.connection import QuestDBConnection
+from utils.logging import Logger
 
+logger = Logger(name='iqfeed', log_dir='data/logs')
 
 class QuestDBOperations(QuestDBConnection):
     def __init__(
@@ -33,14 +35,19 @@ class QuestDBOperations(QuestDBConnection):
             
             query = f"""
                 CREATE TABLE {self.table_name} (
-                    {columns_str}
-                ) timestamp(created_at)
+                    {columns_str},
+                    created_at TIMESTAMP
+                ) TIMESTAMP(created_at) PARTITION BY DAY;
             """
             
             try:
                 await self.execute_query(query)
+                logger.info(f"Table '{self.table_name}' created successfully.")
             except Exception as e:
-                raise Exception(f"Failed to create table: {str(e)}")
+                if "already exists" in str(e).lower():
+                    logger.info(f"Table '{self.table_name}' already exists. Skipping creation.")
+                else:
+                    raise Exception(f"Failed to create table: {str(e)}")
 
     async def get_all(self) -> List[Dict]:
         query = f"SELECT * FROM {self.table_name}"

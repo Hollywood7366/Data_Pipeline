@@ -2,3 +2,6 @@ psycopg2-binary
 polar
 asyncpg
 apache-airflow
+oauth2client
+gspread
+mypy

@@ -1,6 +1,5 @@
 from typing import List
 
-import pandas as pd
 from utils.iqfeed_utils import (
     connect_to_socket, send_message_to_socket, receive_data, clean_data, data_to_csv,
     close_socket, establish_live_feed
@@ -17,6 +16,7 @@ def historical(
     interval: str,
     tickers: List[str],
 ):
+    all_data = {}
     try:
         sock = connect_to_socket(host, port)
         send_message_to_socket(sock, "S,SET PROTOCOL,6.2\n")
@@ -33,8 +33,9 @@ def historical(
             data = receive_data(sock)
             data = clean_data(data)
             data_to_csv(data, sym, start_date, end_date, interval)
-
+            all_data[sym] = data 
         close_socket(sock)
+        return all_data 
     except Exception as e:
         logger.error(f"Error in historical data download: {e}")
 

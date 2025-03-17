@@ -3,6 +3,16 @@ networks:
   airflow:
 
 services:
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    restart: always
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    hostname: autoheal
+
   postgres:
     image: postgres:13
     container_name: postgres_airflow
@@ -71,6 +81,8 @@ services:
     env_file:
       - airflow.env
     image: airflow-project:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
     volumes:
@@ -121,6 +133,8 @@ services:
       - ./plugins:/opt/airflow/plugins
       - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - initdb
       - postgres
@@ -157,6 +171,8 @@ services:
       - postgres
       - redis
       - questdb
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       restart_policy:
         condition: always
