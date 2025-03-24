@@ -27,6 +27,44 @@ class QuestDBOperations(QuestDBConnection):
 
     async def cleanup(self) -> None:
         await self.disconnect()
+        
+    async def insert_data(self, data: Dict[str, Any]) -> None:
+        """Insert a single record into the database with proper string handling"""
+        try:
+            logger.info(f"Inserting record into {self.table_name}: {data}")
+            
+            sanitized_data = {}
+            for key, value in data.items():
+                if isinstance(value, str):
+                    sanitized_value = value.replace("'", "''")
+                    sanitized_data[key] = sanitized_value
+                else:
+                    sanitized_data[key] = value
+            
+            columns = ', '.join(sanitized_data.keys())
+            values = []
+            placeholders = []
+            
+            for i, val in enumerate(sanitized_data.values()):
+                values.append(val)
+                if isinstance(val, str):
+                    placeholders.append(f"$::{i+1}::string")
+                else:
+                    placeholders.append(f"${i+1}")
+            
+            placeholders_str = ', '.join(placeholders)
+            
+            query = f"""
+                INSERT INTO {self.table_name} ({columns})
+                VALUES ({placeholders_str})
+            """
+            
+            await self.execute_query(query, tuple(values))
+            logger.info(f"Successfully inserted record into {self.table_name}")
+        except Exception as e:
+            logger.error(f"Error inserting data into {self.table_name}: {e}")
+            raise
+
 
     async def create_table_if_not_exists(self) -> None:
         if not await self.table_exists(self.table_name):
@@ -184,6 +222,7 @@ class QuestDBOperations(QuestDBConnection):
     async def truncate_table(self) -> None:
         await self.ensure_connected()
         try:
+            print('TruncATE: ', self.table_name)
             query = f"TRUNCATE TABLE {self.table_name}"
             await self.execute_query(query)
         except Exception as e:

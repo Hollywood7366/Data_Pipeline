@@ -185,3 +185,5 @@ class GoogleSheetSync:
     
 #     except KeyboardInterrupt:
 #         sheet_sync.stop_auto_update()
+
+#     sheet_sync.upload_dataframe(df_to_upload)
