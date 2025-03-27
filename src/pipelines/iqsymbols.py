@@ -30,8 +30,8 @@ class DTNIQFeed:
     def start_browser(self):
         self.driver = webdriver.Chrome(options=self.options)
         self.driver.get(self.url)
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "htmlTable")))
-        time.sleep(5)
+        WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.ID, "htmlTable")))
+        time.sleep(2)
 
     async def set_db_operations(self, security_type):
         table_name = f"{security_type}_data" if security_type else "Default_data"
@@ -68,8 +68,8 @@ class DTNIQFeed:
                 logger.error(f"Could not select HTML Table option: {e}")
 
             WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable((By.ID, "searchButton"))).click()
-            WebDriverWait(self.driver, 15).until(EC.presence_of_element_located((By.ID, "symbolTable")))
-            time.sleep(5)
+            WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "symbolTable")))
+            time.sleep(3)
             records_text = self.driver.find_element(By.ID, "quantityHeader").text
             self.total_records = int(records_text.split("of")[1].strip().replace(',', '')) if "of" in records_text else 0
             logger.info(f"Found {self.total_records} total records.")
@@ -108,7 +108,7 @@ class DTNIQFeed:
                 next_button.click()
                 logger.info("Next button clicked")
             WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "symbolTable")))
-            time.sleep(5)
+            time.sleep(3)
             self.current_page += 1
             logger.info(f"Navigated to page {self.current_page}")
             return True
@@ -172,7 +172,7 @@ class DTNIQFeed:
             return
         page_count = 1
         while self.go_to_next_page():
-            WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "symbolTable")))
+            WebDriverWait(self.driver, 8).until(EC.presence_of_element_located((By.ID, "symbolTable")))
             time.sleep(3)
             if not self.extract_current_page():
                 logger.error(f"Failed to extract data from page {self.current_page}")
