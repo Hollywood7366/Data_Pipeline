@@ -57,6 +57,8 @@ services:
       - ./files:/opt/airflow/files
       - ./test:/opt/airflow/test
       - ./utils:/opt/airflow/utils
+      - ./schemas:/opt/airflow/schemas
+      - ./data:/opt/airflow/data
       - ./src:/opt/airflow/src
       - ./models:/opt/airflow/models
       - ./plugins:/opt/airflow/plugins
@@ -91,6 +93,8 @@ services:
       - ./files:/opt/airflow/files
       - ./test:/opt/airflow/test
       - ./utils:/opt/airflow/utils
+      - ./schemas:/opt/airflow/schemas
+      - ./data:/opt/airflow/data
       - ./src:/opt/airflow/src
       - ./models:/opt/airflow/models
       - ./plugins:/opt/airflow/plugins
@@ -131,6 +135,8 @@ services:
       - ./src:/opt/airflow/src
       - ./models:/opt/airflow/models
       - ./plugins:/opt/airflow/plugins
+      - ./schemas:/opt/airflow/schemas
+      - ./data:/opt/airflow/data
       - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
     extra_hosts:
@@ -163,6 +169,8 @@ services:
       - ./utils:/opt/airflow/utils
       - ./src:/opt/airflow/src
       - ./models:/opt/airflow/models
+      - ./schemas:/opt/airflow/schemas
+      - ./data:/opt/airflow/data
       - ./plugins:/opt/airflow/plugins
       - /var/run/docker.sock:/var/run/docker.sock
     command: celery worker
