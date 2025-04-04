@@ -1,66 +1,49 @@
-from typing import Any
-import asyncpg
+from __future__ import annotations
 
-class QuestDBConnection:
-    def __init__(
-        self,
-        host: str = "localhost",
-        port: int = 8812,
-        username: str = "admin",
-        password: str = "quest",
-        database: str = "qdb"
-    ):
-        self.connection_params = {
-            "host": host,
-            "port": port,
-            "user": username,
-            "password": password,
-            "database": database
-        }
-        self.pool = None
-        self._initialized = False
+from contextvars import ContextVar, Token
 
-    async def connect(self) -> None:
-        if not self._initialized:
-            try:
-                self.pool = await asyncpg.create_pool(**self.connection_params)
-                self._initialized = True
-            except Exception as e:
-                raise Exception(f"Failed to connect to QuestDB: {str(e)}")
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-    async def disconnect(self) -> None:
-        if self.pool:
-            await self.pool.close()
-            self._initialized = False
+from src.config.config import config
+import logging
 
-    async def ensure_connected(self) -> None:
-        if not self._initialized:
-            await self.connect()
+Base = declarative_base()
+session_context: ContextVar[str] = ContextVar("session_context")
 
-    async def execute_query(self, query: str, params: tuple = None) -> Any:
-        await self.ensure_connected()
-        
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                try:
-                    if query.strip().upper().startswith(('SELECT', 'SHOW')):
-                        results = await conn.fetch(query, *params if params else ())
-                        return [dict(row) for row in results]
-                    else:
-                        await conn.execute(query, *params if params else ())
-                        return None
-                except Exception as e:
-                    raise Exception(f"Query execution failed: {str(e)}")
 
-    async def table_exists(self, table_name: str) -> bool:
-        try:
-            query = """
-                SELECT EXISTS (
-                    SELECT 1 FROM information_schema.tables 
-                    WHERE table_name = $1
-                )
-            """
-            result = await self.execute_query(query, (table_name,))
-            return result[0]['exists']
-        except Exception:
-            return False
+def get_session_context() -> str:
+    return session_context.get()
+
+
+def set_session_context(session_id: str) -> Token:
+    return session_context.set(session_id)
+
+
+def reset_session_context(context: Token) -> None:
+    session_context.reset(context)
+
+logging.info(f"LOCAL_DATABASE_URL: {config.LOCAL_DATABASE_URL}")
+logging.info(f"DATABASE_URL: {config.DATABASE_URL}")
+
+local_engine = create_async_engine(
+    url="mysql+aiomysql://root:1234@localhost:3306/probabilitiesunlimited",
+    pool_recycle=3600,
+)
+
+engine = create_async_engine(
+    url="mysql+aiomysql://root:1234@host.docker.internal:3306/probabilitiesunlimited",
+    pool_recycle=3600,
+)
+
+async_local_session = sessionmaker(
+    local_engine,
+    expire_on_commit=False,
+    class_=AsyncSession,
+)
+
+async_session = sessionmaker(
+    engine,
+    expire_on_commit=False,
+    class_=AsyncSession,
+)

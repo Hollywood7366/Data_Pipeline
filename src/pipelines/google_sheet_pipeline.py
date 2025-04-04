@@ -1,11 +1,10 @@
 import gspread
-import pandas as pd
+import polars as pl 
 from oauth2client.service_account import ServiceAccountCredentials
 import time
 from datetime import datetime
 import threading
 import os
-import csv
 
 from utils.logging import Logger
 
@@ -21,7 +20,7 @@ class GoogleSheetSync:
         self.data_folder = data_folder
         self.auto_save = auto_save
         self.custom_filename = filename
-        self.df = pd.DataFrame()
+        self.df = pl.DataFrame()
         self.last_updated = None
         self.running = False
         self.update_thread = None
@@ -83,7 +82,7 @@ class GoogleSheetSync:
                 headers = unique_headers
             
             values = data[1:] if len(data) > 1 else []
-            new_df = pd.DataFrame(values, columns=headers)
+            new_df = pl.DataFrame(values, schema=headers)
             self.df = new_df
             self.last_updated = datetime.now()
             
@@ -103,10 +102,10 @@ class GoogleSheetSync:
             return False
     
     def get_dataframe(self):
-        if self.df is None or self.df.empty:
+        if self.df is None or self.df.is_empty():
             logger.warning("Warning: DataFrame is empty or not initialized yet")
-            return pd.DataFrame()
-        return self.df.copy()
+            return pl.DataFrame()
+        return self.df.clone() 
     
     def get_raw_data(self):
         try:
@@ -127,8 +126,7 @@ class GoogleSheetSync:
             if not os.path.exists(self.data_folder):
                 os.makedirs(self.data_folder)
             
-            self.df.to_csv(filepath, index=False, quoting=csv.QUOTE_NONNUMERIC, 
-                           encoding='utf-8-sig')
+            self.df.write_csv(filepath, quote_style='non-numeric')
             
             logger.info(f"DataFrame saved to {filepath}")
             return filepath

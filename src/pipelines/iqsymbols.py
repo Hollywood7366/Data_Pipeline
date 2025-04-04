@@ -1,46 +1,39 @@
 import time
-import pandas as pd
-import asyncio
+import polars as pl
 from datetime import datetime
-from schemas.historical import SYMBOLS_SCHEMA
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import chromedriver_autoinstaller
 from utils.logging import Logger
-from src.pipelines.extras.base import QuestDBOperations
+from src.models.dtn_iqfeed import IqfeedSymbols
+from src.pipelines.extras.base import BaseDB
 
 logger = Logger(name='iqfeed', log_dir='data/logs')
 
 class DTNIQFeed:
-    def __init__(self, headless=False, output_file="dtn_iqfeed_symbols.csv"):
+    def __init__(self, headless=False, output_file="dtn_iqfeed_symbols.parquet"):
+        chromedriver_autoinstaller.install()
         self.url = "https://ws1.dtn.com/IQ/Search/"
         self.output_file = output_file
         self.symbols_data = []
         self.current_page, self.total_records, self.total_records_extracted = 1, 0, 0
         self.records_per_page = 250
         self.options = Options()
-        if headless: self.options.add_argument("--headless")
-        self.options.add_argument("--window-size=1920,1080")
-        self.options.add_argument("--disable-notifications")
+        self.options.add_argument("--headless")
+        self.options.add_argument("--no-sandbox")
+        self.options.add_argument("--disable-dev-shm-usage")
         self.driver = None
-        self.db_operations = None
+        self.db = BaseDB(IqfeedSymbols, local=True)
 
     def start_browser(self):
         self.driver = webdriver.Chrome(options=self.options)
         self.driver.get(self.url)
+        time.sleep(15)
         WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.ID, "htmlTable")))
         time.sleep(2)
-
-    async def set_db_operations(self, security_type):
-        table_name = f"{security_type}_data" if security_type else "Default_data"
-        schema = SYMBOLS_SCHEMA.get(security_type, SYMBOLS_SCHEMA['Default'])
-        self.db_operations = QuestDBOperations(table_name, schema, create_if_not_exists=True)
-        # await self.db_operations.truncate_table()
-        await self.db_operations.initialize()
-        time.sleep(2)
-        logger.info(f"QuestDB table set: {table_name}")
 
     def perform_search(self, exchange=None, security_type=None, show_front_month=False, show_continuous=False, show_eminis=False, no_options=False, no_spreads=False):
         try:
@@ -89,7 +82,6 @@ class DTNIQFeed:
                         "exchange": row.find_elements(By.TAG_NAME, "td")[3].text.strip(),
                         "listed_market": row.find_elements(By.TAG_NAME, "td")[4].text.strip(),
                         "created_at": datetime.now()} for row in rows]
-            logger.info(f"Extracted page data: {page_data}") 
             self.symbols_data.extend(page_data)
             self.total_records_extracted += len(page_data)
             logger.info(f"Extracted {len(page_data)} valid records from page {self.current_page}")
@@ -116,35 +108,18 @@ class DTNIQFeed:
             logger.error(f"Error navigating to next page: {e}")
             return False
 
-    def save_to_csv(self):
+    def save_to_parquet(self):
         if not self.symbols_data: 
             logger.info("No data to save")
             return
         try:
-            pd.DataFrame(self.symbols_data).to_csv(self.output_file, index=False)
+            pl.DataFrame(self.symbols_data).write_parquet(self.output_file)
             logger.info(f"Successfully saved {len(self.symbols_data)} records to {self.output_file}")
         except Exception as e:
-            logger.error(f"Error saving to CSV: {e}")
+            logger.error(f"Error saving to Parquet: {e}")
 
     def sanitize_symbol(self, symbol:str):
         return symbol.replace('@', 'AT')
-
-    async def save_to_db(self):
-        if self.db_operations:
-            for record in self.symbols_data:
-                record['symbol'] = self.sanitize_symbol(record['symbol'])
-                if isinstance(record['created_at'], str):
-                    try:
-                        record['created_at'] = datetime.strptime(record['created_at'], '%Y-%m-%d %H:%M:%S')
-                    except Exception as e:
-                        logger.error(f"Error parsing 'created_at': {e}")
-                        continue
-                elif not isinstance(record['created_at'], datetime):
-                    logger.error(f"Invalid type for 'created_at': {type(record['created_at'])}")
-                    continue
-
-                await self.db_operations.insert_data(record)
-            logger.info(f"Saved {len(self.symbols_data)} records to QuestDB")
 
 
     def close(self):
@@ -152,12 +127,27 @@ class DTNIQFeed:
             self.driver.quit()
             logger.info("Browser closed")
 
-    async def run_complete_extraction(self, security_type):
-        await self.set_db_operations(security_type)
+    async def save_to_db(self):
+        if not self.symbols_data:
+            logger.info("No data to save to database")
+            return
+        
+        try:
+            db_records = []
+            for record in self.symbols_data:
+                record['symbol'] = self.sanitize_symbol(record['symbol'])
+                db_records.append(record)
+            
+            await self.db.bulk_insert(db_records)
+            logger.info(f"Successfully saved {len(db_records)} records to the database")
+        except Exception as e:
+            logger.error(f"Error saving to database: {e}")
+
+    async def run_complete_extraction(self):
         try:
             await self.extract_all_data()
-            # await self.save_to_db()
-            self.save_to_csv()
+            await self.save_to_db()
+            self.save_to_parquet()
         except Exception as e:
             logger.error(f"Error during extraction: {e}")
         finally:

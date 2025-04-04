@@ -10,6 +10,18 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    unzip \
+    libgconf-2-4 \
+    libnss3 \
+    libxss1 \
+    libasound2 \
+    libxtst6 \
+    libgtk-3-0 \
+    libgbm1
+
 RUN chown -R airflow: ${AIRFLOW_HOME}
 USER airflow
 
