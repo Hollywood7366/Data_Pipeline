@@ -9,3 +9,5 @@ logs/
 *.pyc
 *.pyo
 *.pyd
+
+storage/
