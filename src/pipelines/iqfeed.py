@@ -1,12 +1,18 @@
 from typing import List
 
 from utils.iqfeed_utils import (
-    connect_to_socket, send_message_to_socket, receive_data, clean_data, data_to_csv,
-    close_socket, establish_live_feed
+    clean_data,
+    close_socket,
+    connect_to_socket,
+    data_to_parquet,
+    establish_live_feed,
+    receive_data,
+    send_message_to_socket,
 )
 from utils.logging import Logger
 
-logger = Logger(name='iqfeed', log_dir='data/logs')
+logger = Logger(name="iqfeed", log_dir="data/logs")
+
 
 def historical(
     host: str,
@@ -27,17 +33,20 @@ def historical(
             if interval.upper() == "TICK":
                 message = f"HTT,{sym},{start_date} 093000,{end_date} 160000\n"
             else:
-                message = f"HIT,{sym},{interval},{start_date} 093000,{end_date} 160000\n"
+                message = (
+                    f"HIT,{sym},{interval},{start_date} 093000,{end_date} 160000\n"
+                )
 
             send_message_to_socket(sock, message)
             data = receive_data(sock)
             data = clean_data(data)
-            data_to_csv(data, sym, start_date, end_date, interval)
-            all_data[sym] = data 
+            data_to_parquet(data, sym, start_date, end_date, interval)
+            all_data[sym] = data
         close_socket(sock)
-        return all_data 
+        return all_data
     except Exception as e:
         logger.error(f"Error in historical data download: {e}")
+
 
 def live(host: str, port: int, ticker: str):
     try:

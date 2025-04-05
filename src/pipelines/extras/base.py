@@ -6,10 +6,11 @@ from sqlalchemy import text
 from sqlalchemy.future import Select
 from sqlalchemy.sql.expression import select
 
-from src.database.connection import engine, local_engine, sessionmaker, AsyncSession
+from src.database.connection import AsyncSession, engine, local_engine, sessionmaker
 from utils.logging import Logger
 
-logger = Logger(name='iqfeed', log_dir='data/logs')
+logger = Logger(name="iqfeed", log_dir="data/logs")
+
 
 class BaseDB:
     def __init__(self, model, local=False) -> None:

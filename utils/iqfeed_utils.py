@@ -1,8 +1,11 @@
-import socket
 import os
+import socket
+
+import polars as pl
+
 from utils.logging import Logger
 
-logger = Logger(name='iqfeed', log_dir='data/logs')
+logger = Logger(name="iqfeed", log_dir="data/logs")
 
 
 def connect_to_socket(host: str, port: int) -> socket.socket:
@@ -50,33 +53,53 @@ def receive_data(sock: socket.socket, recv_buffer=4096) -> str:
     return buffer
 
 
-def data_to_csv(data: str, sym: str, start_date: str, end_date: str, interval: str) -> None:
+def data_to_parquet(
+    data: str, sym: str, start_date: str, end_date: str, interval: str
+) -> None:
     os.makedirs("data", exist_ok=True)
 
-    filename = f"{sym}_{start_date}_{end_date}_{interval}.csv"
+    filename = f"{sym}_{start_date}_{end_date}_{interval}.parquet"
     filepath = os.path.join("data", filename)
 
-    lines = [line for line in data.split("\n") if not line.startswith("S,")]
+    lines = [
+        line for line in data.split("\n") if not line.startswith("S,") and line.strip()
+    ]
 
     if not lines:
-        logger.warning(f"No valid data for {sym}, skipping CSV creation.")
+        logger.warning(f"No valid data for {sym}, skipping Parquet creation.")
         return
 
-    headers = "DateTime,High,Low,Open,Close,TotalVolume,PeriodVolume,Unknown"
+    headers = [
+        "DateTime",
+        "High",
+        "Low",
+        "Open",
+        "Close",
+        "TotalVolume",
+        "PeriodVolume",
+        "Unknown",
+    ]
+    formatted_rows = []
 
-    formatted_lines = []
     for line in lines:
         parts = line.split(",")
         if len(parts) >= 8 and parts[0] in ["LH", "DT", "T"]:
-            formatted_lines.append(",".join(parts[1:]))
+            row = parts[1:]
         else:
-            formatted_lines.append(line)
+            row = parts
+        if len(row) == 8:
+            formatted_rows.append(row)
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(headers + "\n")
-        f.write("\n".join(formatted_lines) + "\n")
+    if not formatted_rows:
+        logger.warning(f"No properly formatted rows for {sym}.")
+        return
 
-    logger.info(f"Data saved to {filepath}")
+    try:
+        df = pl.DataFrame(formatted_rows, schema=headers)
+        df.write_parquet(filepath)
+        logger.info(f"Data saved to {filepath}")
+    except Exception as e:
+        logger.error(f"Failed to save {sym} data to Parquet: {e}")
 
 
 def clean_data(data: str) -> str:

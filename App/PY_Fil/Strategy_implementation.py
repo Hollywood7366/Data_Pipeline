@@ -1,16 +1,17 @@
+import datetime
 import logging
 import os
-from datetime import datetime as dt
-from ib_insync import *
-import pandas as pd
 import time
-import datetime
-import schedule
+from datetime import datetime as dt
+
 import library as ba
-import orders as ods
-import pytz
-from dateutil.relativedelta import relativedelta
 import nest_asyncio
+import orders as ods
+import pandas as pd
+import pytz
+import schedule
+from dateutil.relativedelta import relativedelta
+from ib_insync import *
 
 nest_asyncio.apply()
 

@@ -5,10 +5,14 @@ from typing import Any
 
 
 class Config:
-    ENVIRONMENT: str = 'development'
-    DATABASE_URL: str = 'mysql+aiomysql://root:1234@host.docker.internal:3306/probabilitiesunlimited'
-    LOCAL_DATABASE_URL: str = 'mysql+aiomysql://root:1234@localhost:3306/probabilitiesunlimited'
-    SPREADSHEET_KEY: str = '1w07aJMtZx_f77zef_vIER-_xR1ygj7Kyqr76d6AjwuI'
+    ENVIRONMENT: str = "development"
+    DATABASE_URL: str = (
+        "mysql+aiomysql://root:1234@host.docker.internal:3306/probabilitiesunlimited"
+    )
+    LOCAL_DATABASE_URL: str = (
+        "mysql+aiomysql://root:1234@localhost:3306/probabilitiesunlimited"
+    )
+    SPREADSHEET_KEY: str = "1w07aJMtZx_f77zef_vIER-_xR1ygj7Kyqr76d6AjwuI"
 
     @staticmethod
     def load_environment_variables(*env_files: str) -> None:
