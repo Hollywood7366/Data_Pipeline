@@ -1,5 +1,6 @@
 import polars as pl
 
+
 def parquet_columns_naming(df):
     old_headers = df.columns
 

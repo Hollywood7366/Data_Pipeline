@@ -15,6 +15,7 @@ class IqfeedSymbolsFrontMonth(Base, TimeAuditMixin):
     exchange = Column(String(255), nullable=False)
     listed_market = Column(String(255), nullable=False)
 
+
 class IqfeedSymbolsContinuousContracts(Base, TimeAuditMixin):
     __tablename__: str = "DTN_IQFEED_SYMBOLS_CONTINUOUS_CONTRACTS_FUTURES"
 
@@ -23,6 +24,7 @@ class IqfeedSymbolsContinuousContracts(Base, TimeAuditMixin):
     security_type = Column(String(255), nullable=False)
     exchange = Column(String(255), nullable=False)
     listed_market = Column(String(255), nullable=False)
+
 
 class IqfeedSymbolsEminis(Base, TimeAuditMixin):
     __tablename__: str = "DTN_IQFEED_SYMBOLS_EMINIS"
@@ -33,6 +35,7 @@ class IqfeedSymbolsEminis(Base, TimeAuditMixin):
     exchange = Column(String(255), nullable=False)
     listed_market = Column(String(255), nullable=False)
 
+
 class IqfeedSymbolsNoOptions(Base, TimeAuditMixin):
     __tablename__: str = "DTN_IQFEED_SYMBOLS_NO_OPTIONS"
 
@@ -42,6 +45,7 @@ class IqfeedSymbolsNoOptions(Base, TimeAuditMixin):
     exchange = Column(String(255), nullable=False)
     listed_market = Column(String(255), nullable=False)
 
+
 class IqfeedSymbolsNoSpreads(Base, TimeAuditMixin):
     __tablename__: str = "DTN_IQFEED_SYMBOLS_NO_SPREADS"
 
@@ -50,6 +54,7 @@ class IqfeedSymbolsNoSpreads(Base, TimeAuditMixin):
     security_type = Column(String(255), nullable=False)
     exchange = Column(String(255), nullable=False)
     listed_market = Column(String(255), nullable=False)
+
 
 class IqfeedSymbolsAll(Base, TimeAuditMixin):
     __tablename__: str = "DTN_IQFEED_SYMBOLS_ALL"

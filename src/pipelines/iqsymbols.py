@@ -9,8 +9,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from src.models import IqfeedSymbolsFrontMonth, IqfeedSymbolsContinuousContracts, \
-    IqfeedSymbolsEminis, IqfeedSymbolsNoOptions, IqfeedSymbolsNoSpreads, IqfeedSymbolsAll
+from src.models import (
+    IqfeedSymbolsAll,
+    IqfeedSymbolsContinuousContracts,
+    IqfeedSymbolsEminis,
+    IqfeedSymbolsFrontMonth,
+    IqfeedSymbolsNoOptions,
+    IqfeedSymbolsNoSpreads,
+)
 from src.pipelines.extras.base import BaseDB
 from utils.logging import Logger
 from utils.util import base_path
@@ -43,7 +49,14 @@ class DTNIQFeed:
         )
         time.sleep(2)
 
-    def select_model_and_filename(self, show_front_month=False, show_continuous=False, show_eminis=False, no_options=False, no_spreads=False):
+    def select_model_and_filename(
+        self,
+        show_front_month=False,
+        show_continuous=False,
+        show_eminis=False,
+        no_options=False,
+        no_spreads=False,
+    ):
         if show_front_month:
             self.db = BaseDB(IqfeedSymbolsFrontMonth, local=True)
             self.model_name = "IqfeedSymbolsFrontMonth"
@@ -62,8 +75,10 @@ class DTNIQFeed:
         else:
             self.db = BaseDB(IqfeedSymbolsAll, local=True)
             self.model_name = "IqfeedSymbolsAll"
-        
-        self.output_file = f"{base_path()}/data/DTN_SYMBOLS/dtn_{self.model_name.lower()}.parquet"
+
+        self.output_file = (
+            f"{base_path()}/data/DTN_SYMBOLS/dtn_{self.model_name.lower()}.parquet"
+        )
 
     def perform_search(
         self,
@@ -122,7 +137,7 @@ class DTNIQFeed:
             time.sleep(3)
             records_text = self.driver.find_element(By.ID, "quantityHeader").text
             self.total_records = (
-                int(records_text.split("of")[1].strip().replace(",", "")) 
+                int(records_text.split("of")[1].strip().replace(",", ""))
                 if "of" in records_text
                 else 0
             )
@@ -144,9 +159,13 @@ class DTNIQFeed:
                 {
                     "symbol": row.find_elements(By.TAG_NAME, "td")[0].text.strip(),
                     "description": row.find_elements(By.TAG_NAME, "td")[1].text.strip(),
-                    "security_type": row.find_elements(By.TAG_NAME, "td")[2].text.strip(),
+                    "security_type": row.find_elements(By.TAG_NAME, "td")[
+                        2
+                    ].text.strip(),
                     "exchange": row.find_elements(By.TAG_NAME, "td")[3].text.strip(),
-                    "listed_market": row.find_elements(By.TAG_NAME, "td")[4].text.strip(),
+                    "listed_market": row.find_elements(By.TAG_NAME, "td")[
+                        4
+                    ].text.strip(),
                     "created_at": datetime.now(),
                 }
                 for row in rows
@@ -213,7 +232,7 @@ class DTNIQFeed:
 
             new_records = []
             for record in self.symbols_data:
-                symbol = record["symbol"] 
+                symbol = record["symbol"]
                 if symbol not in existing_symbols:
                     record["symbol"] = symbol
                     new_records.append(record)
@@ -233,11 +252,18 @@ class DTNIQFeed:
         except Exception as e:
             logger.error(f"Error saving to database or parquet: {e}")
 
-    async def run_complete_extraction(self,show_front_month=False, show_continuous=False, show_eminis=False,
-            no_options=False, no_spreads=False):
+    async def run_complete_extraction(
+        self,
+        show_front_month=False,
+        show_continuous=False,
+        show_eminis=False,
+        no_options=False,
+        no_spreads=False,
+    ):
         try:
-            await self.extract_all_data( show_front_month, show_continuous, 
-                                    show_eminis, no_options, no_spreads)
+            await self.extract_all_data(
+                show_front_month, show_continuous, show_eminis, no_options, no_spreads
+            )
             await self.save_to_db()
             self.save_to_parquet()
         except Exception as e:
@@ -245,10 +271,17 @@ class DTNIQFeed:
         finally:
             self.close()
 
-    async def extract_all_data(self,
-                        show_front_month=False, show_continuous=False,
-                        show_eminis=False, no_options=False, no_spreads=False):
-        self.select_model_and_filename(show_front_month, show_continuous, show_eminis, no_options, no_spreads)
+    async def extract_all_data(
+        self,
+        show_front_month=False,
+        show_continuous=False,
+        show_eminis=False,
+        no_options=False,
+        no_spreads=False,
+    ):
+        self.select_model_and_filename(
+            show_front_month, show_continuous, show_eminis, no_options, no_spreads
+        )
         if not self.perform_search():
             logger.error("Initial search failed")
             return

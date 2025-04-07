@@ -7,15 +7,15 @@ from airflow.operators.python import PythonOperator
 
 from src.models import *
 from src.pipelines.extras.base import BaseDB
-from src.pipelines.transformations.parquet_misc import parquet_columns_naming
 from src.pipelines.google_sheet_pipeline import GoogleSheetSync
+from src.pipelines.transformations.parquet_misc import parquet_columns_naming
+from utils.atomic_creator import AtomicFileUpdate
 from utils.CONSTANTS import (
     CREDENTIALS_PATH,
     SPREADSHEET_KEY,
     SYMBOLS_COMPLETE,
     SYMBOLS_RAW,
 )
-from utils.atomic_creator import AtomicFileUpdate
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
 
@@ -67,8 +67,8 @@ async def fetch_and_save_db_records(symbols):
     db = BaseDB(IqfeedSymbolsAll)
     records = []
     missing_symbols = []
-    processed_symbols = set() 
-    
+    processed_symbols = set()
+
     models = [
         IqfeedSymbolsFrontMonth,
         IqfeedSymbolsContinuousContracts,
@@ -82,7 +82,7 @@ async def fetch_and_save_db_records(symbols):
         db.model = model
 
         for symbol in symbols:
-            if symbol in processed_symbols: 
+            if symbol in processed_symbols:
                 continue
 
             results = await db.get_by_column("symbol", symbol)
@@ -111,7 +111,7 @@ async def fetch_and_save_db_records(symbols):
 
     full_df = pl.DataFrame(records)
     atomic_update = AtomicFileUpdate(SYMBOLS_COMPLETE, f"{SYMBOLS_COMPLETE}.tmp")
-    atomic_update.perform_atomic_update(full_df) 
+    atomic_update.perform_atomic_update(full_df)
 
     logger.info(f"Saved {len(records)} full records to {SYMBOLS_COMPLETE}")
 

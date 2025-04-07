@@ -38,7 +38,14 @@ dag = DAG(
 
 def update_dropdown_symbols():
     async def run():
-        models = [IqfeedSymbolsAll,IqfeedSymbolsContinuousContracts,IqfeedSymbolsEminis,IqfeedSymbolsFrontMonth,IqfeedSymbolsNoOptions,IqfeedSymbolsNoSpreads]
+        models = [
+            IqfeedSymbolsAll,
+            IqfeedSymbolsContinuousContracts,
+            IqfeedSymbolsEminis,
+            IqfeedSymbolsFrontMonth,
+            IqfeedSymbolsNoOptions,
+            IqfeedSymbolsNoSpreads,
+        ]
         all_symbols = set()
 
         for model in models:

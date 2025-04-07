@@ -1,9 +1,12 @@
-import polars as pl
 import os
 import time
+
+import polars as pl
+
 from utils.logging import Logger
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
+
 
 class AtomicFileUpdate:
     def __init__(self, final_file_path: str, temp_file_path: str):
@@ -22,7 +25,7 @@ class AtomicFileUpdate:
         try:
             if os.path.exists(self.final_file_path):
                 os.remove(self.final_file_path)
-            
+
             os.rename(self.temp_file_path, self.final_file_path)
         except Exception as e:
             logger.error(f"Error finalizing update: {e}")
