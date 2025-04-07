@@ -40,7 +40,7 @@ dag = DAG(
 )
 
 
-async def fetch_symbols_from_sheet() -> list[str]:
+async def fetch_symbols_from_sheet():
     sheet_sync = GoogleSheetSync(
         credentials_path=CREDENTIALS_PATH,
         spreadsheet_key=SPREADSHEET_KEY,
@@ -60,7 +60,7 @@ async def fetch_symbols_from_sheet() -> list[str]:
     return symbols
 
 
-async def fetch_and_save_db_records(symbols: list[str]):
+async def fetch_and_save_db_records(symbols):
     db = BaseDB(IqfeedSymbols)
     records = []
     missing_symbols = []
