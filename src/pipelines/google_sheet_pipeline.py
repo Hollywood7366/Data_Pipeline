@@ -7,6 +7,7 @@ import gspread
 import polars as pl
 from oauth2client.service_account import ServiceAccountCredentials
 
+from utils.atomic_creator import AtomicFileUpdate
 from utils.logging import Logger
 
 logger = Logger(name="iqfeed-symbols", log_dir="data/sheet_logs")
@@ -64,12 +65,12 @@ class GoogleSheetSync:
             self.worksheet = self.sheet.worksheet(self.worksheet_name)
 
         if self.custom_filename is None:
-            self.filename = f"{self.worksheet.title.lower().replace(' ', '_')}.csv"
+            self.filename = f"{self.worksheet.title.lower().replace(' ', '_')}.parquet"
         else:
             self.filename = (
                 self.custom_filename
-                if self.custom_filename.endswith(".csv")
-                else f"{self.custom_filename}.csv"
+                if self.custom_filename.endswith(".parquet")
+                else f"{self.custom_filename}.parquet"
             )
 
     def update_dataframe(self):
@@ -109,7 +110,7 @@ class GoogleSheetSync:
             )
 
             if self.auto_save:
-                self.save_to_csv()
+                self.save_to_parquet()
 
             return True
 
@@ -134,10 +135,10 @@ class GoogleSheetSync:
             logger.error(f"Error getting raw data: {e}")
             return []
 
-    def save_to_csv(self, custom_filename=None):
+    def save_to_parquet(self, custom_filename=None):
         try:
             if self.df.is_empty():
-                logger.warning("Warning: Cannot save empty DataFrame to CSV")
+                logger.warning("Warning: Cannot save empty DataFrame to Parquet")
                 return None
 
             filename = custom_filename or self.filename
@@ -146,13 +147,17 @@ class GoogleSheetSync:
             if not os.path.exists(self.data_folder):
                 os.makedirs(self.data_folder)
 
-            self.df.write_csv(filepath, quote_style="non_numeric")
-
-            logger.info(f"DataFrame saved to {filepath}")
-            return filepath
+            temp_file_path = f"{filepath}.tmp"
+            atomic_update = AtomicFileUpdate(filepath, temp_file_path)
+            if atomic_update.perform_atomic_update(self.df):
+                logger.info(f"DataFrame saved to {filepath}")
+                return filepath
+            else:
+                logger.error("Atomic update failed during parquet save.")
+                return None
 
         except Exception as e:
-            logger.critical(f"Error saving CSV: {e}")
+            logger.critical(f"Error saving Parquet: {e}")
             return None
 
     def start_auto_update(self):

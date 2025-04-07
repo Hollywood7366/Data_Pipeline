@@ -9,15 +9,17 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from src.models.dtn_iqfeed import IqfeedSymbols
+from src.models import IqfeedSymbolsFrontMonth, IqfeedSymbolsContinuousContracts, \
+    IqfeedSymbolsEminis, IqfeedSymbolsNoOptions, IqfeedSymbolsNoSpreads, IqfeedSymbolsAll
 from src.pipelines.extras.base import BaseDB
 from utils.logging import Logger
+from utils.util import base_path
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
 
 
 class DTNIQFeed:
-    def __init__(self, headless=False, output_file="dtn_iqfeed_symbols.parquet"):
+    def __init__(self, output_file="dtn_iqfeed_symbols.parquet"):
         chromedriver_autoinstaller.install()
         self.url = "https://ws1.dtn.com/IQ/Search/"
         self.output_file = output_file
@@ -29,7 +31,8 @@ class DTNIQFeed:
         self.options.add_argument("--no-sandbox")
         self.options.add_argument("--disable-dev-shm-usage")
         self.driver = None
-        self.db = BaseDB(IqfeedSymbols, local=True)
+        self.db = None
+        self.model_name = "IqfeedSymbolsAll"
 
     def start_browser(self):
         self.driver = webdriver.Chrome(options=self.options)
@@ -39,6 +42,28 @@ class DTNIQFeed:
             EC.presence_of_element_located((By.ID, "htmlTable"))
         )
         time.sleep(2)
+
+    def select_model_and_filename(self, show_front_month=False, show_continuous=False, show_eminis=False, no_options=False, no_spreads=False):
+        if show_front_month:
+            self.db = BaseDB(IqfeedSymbolsFrontMonth, local=True)
+            self.model_name = "IqfeedSymbolsFrontMonth"
+        elif show_continuous:
+            self.db = BaseDB(IqfeedSymbolsContinuousContracts, local=True)
+            self.model_name = "IqfeedSymbolsContinuousContracts"
+        elif show_eminis:
+            self.db = BaseDB(IqfeedSymbolsEminis, local=True)
+            self.model_name = "IqfeedSymbolsEminis"
+        elif no_options:
+            self.db = BaseDB(IqfeedSymbolsNoOptions, local=True)
+            self.model_name = "IqfeedSymbolsNoOptions"
+        elif no_spreads:
+            self.db = BaseDB(IqfeedSymbolsNoSpreads, local=True)
+            self.model_name = "IqfeedSymbolsNoSpreads"
+        else:
+            self.db = BaseDB(IqfeedSymbolsAll, local=True)
+            self.model_name = "IqfeedSymbolsAll"
+        
+        self.output_file = f"{base_path()}/data/DTN_SYMBOLS/dtn_{self.model_name.lower()}.parquet"
 
     def perform_search(
         self,
@@ -97,7 +122,7 @@ class DTNIQFeed:
             time.sleep(3)
             records_text = self.driver.find_element(By.ID, "quantityHeader").text
             self.total_records = (
-                int(records_text.split("of")[1].strip().replace(",", ""))
+                int(records_text.split("of")[1].strip().replace(",", "")) 
                 if "of" in records_text
                 else 0
             )
@@ -119,13 +144,9 @@ class DTNIQFeed:
                 {
                     "symbol": row.find_elements(By.TAG_NAME, "td")[0].text.strip(),
                     "description": row.find_elements(By.TAG_NAME, "td")[1].text.strip(),
-                    "security_type": row.find_elements(By.TAG_NAME, "td")[
-                        2
-                    ].text.strip(),
+                    "security_type": row.find_elements(By.TAG_NAME, "td")[2].text.strip(),
                     "exchange": row.find_elements(By.TAG_NAME, "td")[3].text.strip(),
-                    "listed_market": row.find_elements(By.TAG_NAME, "td")[
-                        4
-                    ].text.strip(),
+                    "listed_market": row.find_elements(By.TAG_NAME, "td")[4].text.strip(),
                     "created_at": datetime.now(),
                 }
                 for row in rows
@@ -174,9 +195,6 @@ class DTNIQFeed:
         except Exception as e:
             logger.error(f"Error saving to Parquet: {e}")
 
-    def sanitize_symbol(self, symbol: str):
-        return symbol.replace("@", "AT")
-
     def close(self):
         if self.driver:
             self.driver.quit()
@@ -195,7 +213,7 @@ class DTNIQFeed:
 
             new_records = []
             for record in self.symbols_data:
-                symbol = self.sanitize_symbol(record["symbol"])
+                symbol = record["symbol"] 
                 if symbol not in existing_symbols:
                     record["symbol"] = symbol
                     new_records.append(record)
@@ -215,9 +233,11 @@ class DTNIQFeed:
         except Exception as e:
             logger.error(f"Error saving to database or parquet: {e}")
 
-    async def run_complete_extraction(self):
+    async def run_complete_extraction(self,show_front_month=False, show_continuous=False, show_eminis=False,
+            no_options=False, no_spreads=False):
         try:
-            await self.extract_all_data()
+            await self.extract_all_data( show_front_month, show_continuous, 
+                                    show_eminis, no_options, no_spreads)
             await self.save_to_db()
             self.save_to_parquet()
         except Exception as e:
@@ -225,7 +245,10 @@ class DTNIQFeed:
         finally:
             self.close()
 
-    async def extract_all_data(self):
+    async def extract_all_data(self,
+                        show_front_month=False, show_continuous=False,
+                        show_eminis=False, no_options=False, no_spreads=False):
+        self.select_model_and_filename(show_front_month, show_continuous, show_eminis, no_options, no_spreads)
         if not self.perform_search():
             logger.error("Initial search failed")
             return
@@ -245,10 +268,3 @@ class DTNIQFeed:
         logger.info(
             f"Extraction complete. Processed {page_count} pages. Total records extracted: {len(self.symbols_data)}"
         )
-
-
-# if __name__ == "__main__":
-#     scraper = DTNIQFeed(headless=False, output_file="data/dtn_iqfeed_symbols_all.csv")
-#     scraper.start_browser()
-#     scraper.perform_search(show_front_month=True)
-#     asyncio.run(scraper.run_complete_extraction(security_type="Futures"))

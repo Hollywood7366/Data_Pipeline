@@ -3,6 +3,7 @@ import socket
 
 import polars as pl
 
+from utils.atomic_creator import AtomicFileUpdate
 from utils.logging import Logger
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
@@ -96,7 +97,8 @@ def data_to_parquet(
 
     try:
         df = pl.DataFrame(formatted_rows, schema=headers)
-        df.write_parquet(filepath)
+        atomic_update = AtomicFileUpdate(filepath, f"{filepath}.tmp")
+        atomic_update.perform_atomic_update(df)
         logger.info(f"Data saved to {filepath}")
     except Exception as e:
         logger.error(f"Failed to save {sym} data to Parquet: {e}")

@@ -31,9 +31,9 @@ dag = DAG(
 
 def download_all_symbols():
     if not os.path.exists(SYMBOLS_RAW):
-        raise FileNotFoundError("CSV not found")
+        raise FileNotFoundError("parquet not found")
 
-    df = pl.read_csv(SYMBOLS_RAW, has_header=False, new_columns=["symbol"])
+    df = pl.read_parquet(SYMBOLS_RAW, has_header=False, new_columns=["symbol"])
     if df.is_empty():
         return
 

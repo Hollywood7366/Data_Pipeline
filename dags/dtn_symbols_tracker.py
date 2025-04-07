@@ -5,7 +5,7 @@ import polars as pl
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from src.models import IqfeedSymbols
+from src.models import *
 from src.pipelines.extras.base import BaseDB
 from src.pipelines.google_sheet_pipeline import GoogleSheetSync
 from utils.CONSTANTS import CREDENTIALS_PATH, SPREADSHEET_KEY
@@ -38,7 +38,7 @@ dag = DAG(
 
 def update_dropdown_symbols():
     async def run():
-        models = [IqfeedSymbols]
+        models = [IqfeedSymbolsAll,IqfeedSymbolsContinuousContracts,IqfeedSymbolsEminis,IqfeedSymbolsFrontMonth,IqfeedSymbolsNoOptions,IqfeedSymbolsNoSpreads]
         all_symbols = set()
 
         for model in models:
