@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import logging
 from contextvars import ContextVar, Token
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from src.config.config import config
+from src.config.config import config as cn
 
 Base = declarative_base()
 session_context: ContextVar[str] = ContextVar("session_context")
@@ -24,16 +23,13 @@ def reset_session_context(context: Token) -> None:
     session_context.reset(context)
 
 
-logging.info(f"LOCAL_DATABASE_URL: {config.LOCAL_DATABASE_URL}")
-logging.info(f"DATABASE_URL: {config.DATABASE_URL}")
-
 local_engine = create_async_engine(
-    url="mysql+aiomysql://root:1234@localhost:3306/probabilitiesunlimited",
+    url=cn.LOCAL_DATABASE_URL,
     pool_recycle=3600,
 )
 
 engine = create_async_engine(
-    url="mysql+aiomysql://root:1234@host.docker.internal:3306/probabilitiesunlimited",
+    url=cn.DATABASE_URL,
     pool_recycle=3600,
 )
 

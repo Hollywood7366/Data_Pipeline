@@ -35,6 +35,7 @@ class GoogleSheetSync:
         self.last_updated = None
         self.running = False
         self.update_thread = None
+        self.filename = None
 
         if not os.path.exists(self.data_folder):
             os.makedirs(self.data_folder)
@@ -65,7 +66,9 @@ class GoogleSheetSync:
             self.worksheet = self.sheet.worksheet(self.worksheet_name)
 
         if self.custom_filename is None:
-            self.filename = f"{self.worksheet.title.lower().replace(' ', '_')}.parquet"
+            self.filename = (
+                f"{self.worksheet.title.lower().replace(' ', '_')}.parquet"
+            )
         else:
             self.filename = (
                 self.custom_filename
@@ -74,6 +77,7 @@ class GoogleSheetSync:
             )
 
     def update_dataframe(self):
+        success = False
         try:
             data = self.worksheet.get_all_values()
 
@@ -82,7 +86,9 @@ class GoogleSheetSync:
                 return False
 
             headers = data[0]
-            duplicate_headers = [h for h in headers if headers.count(h) > 1]
+            duplicate_headers = [
+                h for h in headers if headers.count(h) > 1
+            ]
             if duplicate_headers:
                 logger.warning(
                     f"Warning: Duplicate headers found: {set(duplicate_headers)}"
@@ -110,9 +116,9 @@ class GoogleSheetSync:
             )
 
             if self.auto_save:
-                self.save_to_parquet()
+                success = self.save_to_parquet(success)
 
-            return True
+            return success
 
         except Exception as e:
             logger.error(f"Error updating DataFrame: {e}")
@@ -124,7 +130,9 @@ class GoogleSheetSync:
 
     def get_dataframe(self):
         if self.df is None or self.df.is_empty():
-            logger.warning("Warning: DataFrame is empty or not initialized yet")
+            logger.warning(
+                "Warning: DataFrame is empty or not initialized yet"
+            )
             return pl.DataFrame()
         return self.df.clone()
 
@@ -135,14 +143,16 @@ class GoogleSheetSync:
             logger.error(f"Error getting raw data: {e}")
             return []
 
-    def save_to_parquet(self, custom_filename=None):
+    def save_to_parquet(self, success):
         try:
             if self.df.is_empty():
-                logger.warning("Warning: Cannot save empty DataFrame to Parquet")
+                logger.error(
+                    "Warning: Cannot save empty DataFrame to Parquet"
+                )
                 return None
 
-            filename = custom_filename or self.filename
-            filepath = os.path.join(self.data_folder, filename)
+            file_name = self.filename
+            filepath = os.path.join(self.data_folder, file_name)
 
             if not os.path.exists(self.data_folder):
                 os.makedirs(self.data_folder)
@@ -150,8 +160,9 @@ class GoogleSheetSync:
             temp_file_path = f"{filepath}.tmp"
             atomic_update = AtomicFileUpdate(filepath, temp_file_path)
             if atomic_update.perform_atomic_update(self.df):
+                success = True
                 logger.info(f"DataFrame saved to {filepath}")
-                return filepath
+                return success
             else:
                 logger.error("Atomic update failed during parquet save.")
                 return None
@@ -166,10 +177,14 @@ class GoogleSheetSync:
             return
 
         self.running = True
-        self.update_thread = threading.Thread(target=self._auto_update_worker)
+        self.update_thread = threading.Thread(
+            target=self._auto_update_worker
+        )
         self.update_thread.daemon = True
         self.update_thread.start()
-        logger.info(f"Auto-update started with {self.update_interval} second interval")
+        logger.info(
+            f"Auto-update started with {self.update_interval} second interval"
+        )
 
     def stop_auto_update(self):
         self.running = False

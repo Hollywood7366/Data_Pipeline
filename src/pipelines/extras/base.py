@@ -6,7 +6,12 @@ from sqlalchemy import text
 from sqlalchemy.future import Select
 from sqlalchemy.sql.expression import select
 
-from src.database.connection import AsyncSession, engine, local_engine, sessionmaker
+from src.database.connection import (
+    AsyncSession,
+    engine,
+    local_engine,
+    sessionmaker,
+)
 from utils.logging import Logger
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
@@ -32,7 +37,9 @@ class BaseDB:
         async with self.async_session() as session:
             try:
                 await session.run_sync(
-                    lambda sessio: sessio.bulk_insert_mappings(self.model, data),
+                    lambda sessio: sessio.bulk_insert_mappings(
+                        self.model, data
+                    ),
                 )
                 await session.commit()
                 logger.info(
@@ -42,6 +49,34 @@ class BaseDB:
                 await session.rollback()
                 logger.critical(
                     message=f"Failed to load data into {self.model.__name__} \n Error: {e}",
+                )
+
+    async def create(self, data) -> None:
+        async with self.async_session() as session:
+            try:
+                session.add(self.model(**data))
+                await session.commit()
+                logger.info(
+                    f"Successfully added a record to the {self.model.__name__} table"
+                )
+            except Exception as e:
+                await session.rollback()
+                logger.critical(
+                    message=f"Failed to insert data into {self.model.__name__} \n Error: {e}",
+                )
+
+    async def update(self, instance) -> None:
+        async with self.async_session() as session:
+            try:
+                session.add(instance)
+                await session.commit()
+                logger.info(
+                    f"Successfully updated a record in the {self.model.__name__} table"
+                )
+            except Exception as e:
+                await session.rollback()
+                logger.critical(
+                    message=f"Failed to update data in {self.model.__name__} \n Error: {e}",
                 )
 
     async def _get_all(self):
@@ -112,7 +147,9 @@ class BaseDB:
             try:
                 async with session.begin():
                     # await session.execute(f"USE {database}")
-                    await session.execute(f"TRUNCATE TABLE {self.model.__table__}")
+                    await session.execute(
+                        f"TRUNCATE TABLE {self.model.__table__}"
+                    )
                 logger.info(
                     message=f"Successfully truncated the {self.model.__tablename__} table",
                 )

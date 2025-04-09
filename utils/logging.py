@@ -28,7 +28,8 @@ class Logger:
         console_handler = logging.StreamHandler()
         console_handler.setLevel(console_level)
         console_formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+            "%(asctime)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
         console_handler.setFormatter(console_formatter)
         self.logger.addHandler(console_handler)
@@ -45,14 +46,17 @@ class Logger:
         file_path = os.path.join(self.log_dir, f"{level_name}.txt")
 
         file_handler = RotatingFileHandler(
-            file_path, maxBytes=self.max_file_size, backupCount=self.backup_count
+            file_path,
+            maxBytes=self.max_file_size,
+            backupCount=self.backup_count,
         )
 
         file_handler.setLevel(level)
         file_handler.addFilter(lambda record: record.levelno == level)
 
         file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+            "%(asctime)s - %(name)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
         file_handler.setFormatter(file_formatter)
         self.logger.addHandler(file_handler)

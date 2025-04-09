@@ -6,6 +6,7 @@ from .dtn_iqfeed import (
     IqfeedSymbolsNoOptions,
     IqfeedSymbolsNoSpreads,
 )
+from .metadata import History, IQFeedDataMeta, SymbolMetadata
 
 __all__ = [
     "IqfeedSymbolsContinuousContracts",
@@ -14,4 +15,7 @@ __all__ = [
     "IqfeedSymbolsNoOptions",
     "IqfeedSymbolsNoSpreads",
     "IqfeedSymbolsAll",
+    "SymbolMetadata",
+    "IQFeedDataMeta",
+    "History",
 ]

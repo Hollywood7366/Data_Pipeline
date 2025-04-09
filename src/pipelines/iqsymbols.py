@@ -18,6 +18,7 @@ from src.models import (
     IqfeedSymbolsNoSpreads,
 )
 from src.pipelines.extras.base import BaseDB
+from src.pipelines.extras.metadata import MetadataManager
 from utils.logging import Logger
 from utils.util import base_path
 
@@ -30,12 +31,17 @@ class DTNIQFeed:
         self.url = "https://ws1.dtn.com/IQ/Search/"
         self.output_file = output_file
         self.symbols_data = []
-        self.current_page, self.total_records, self.total_records_extracted = 1, 0, 0
+        (
+            self.current_page,
+            self.total_records,
+            self.total_records_extracted,
+        ) = (1, 0, 0)
         self.records_per_page = 250
         self.options = Options()
         self.options.add_argument("--headless")
         self.options.add_argument("--no-sandbox")
         self.options.add_argument("--disable-dev-shm-usage")
+        self.options.binary_location = "/usr/bin/google-chrome"
         self.driver = None
         self.db = None
         self.model_name = "IqfeedSymbolsAll"
@@ -58,27 +64,25 @@ class DTNIQFeed:
         no_spreads=False,
     ):
         if show_front_month:
-            self.db = BaseDB(IqfeedSymbolsFrontMonth, local=True)
+            self.db = BaseDB(IqfeedSymbolsFrontMonth)
             self.model_name = "IqfeedSymbolsFrontMonth"
         elif show_continuous:
-            self.db = BaseDB(IqfeedSymbolsContinuousContracts, local=True)
+            self.db = BaseDB(IqfeedSymbolsContinuousContracts)
             self.model_name = "IqfeedSymbolsContinuousContracts"
         elif show_eminis:
-            self.db = BaseDB(IqfeedSymbolsEminis, local=True)
+            self.db = BaseDB(IqfeedSymbolsEminis)
             self.model_name = "IqfeedSymbolsEminis"
         elif no_options:
-            self.db = BaseDB(IqfeedSymbolsNoOptions, local=True)
+            self.db = BaseDB(IqfeedSymbolsNoOptions)
             self.model_name = "IqfeedSymbolsNoOptions"
         elif no_spreads:
-            self.db = BaseDB(IqfeedSymbolsNoSpreads, local=True)
+            self.db = BaseDB(IqfeedSymbolsNoSpreads)
             self.model_name = "IqfeedSymbolsNoSpreads"
         else:
-            self.db = BaseDB(IqfeedSymbolsAll, local=True)
+            self.db = BaseDB(IqfeedSymbolsAll)
             self.model_name = "IqfeedSymbolsAll"
 
-        self.output_file = (
-            f"{base_path()}/data/DTN_SYMBOLS/dtn_{self.model_name.lower()}.parquet"
-        )
+        self.output_file = f"{base_path()}/data/DTN_SYMBOLS/dtn_{self.model_name.lower()}.parquet"
 
     def perform_search(
         self,
@@ -100,10 +104,13 @@ class DTNIQFeed:
                 time.sleep(0.5)
 
             if security_type and security_type != "ALL":
-                self.driver.find_element(By.ID, "securityTypeSelect").click()
+                self.driver.find_element(
+                    By.ID, "securityTypeSelect"
+                ).click()
                 time.sleep(0.5)
                 self.driver.find_element(
-                    By.XPATH, f"//option[contains(text(), '{security_type}')]"
+                    By.XPATH,
+                    f"//option[contains(text(), '{security_type}')]",
                 ).click()
                 time.sleep(0.5)
 
@@ -121,7 +128,8 @@ class DTNIQFeed:
 
             try:
                 html_table_radio = self.driver.find_element(
-                    By.XPATH, "//input[@type='radio' and @value='htmlTable']"
+                    By.XPATH,
+                    "//input[@type='radio' and @value='htmlTable']",
                 )
                 if not html_table_radio.is_selected():
                     html_table_radio.click()
@@ -135,7 +143,9 @@ class DTNIQFeed:
                 EC.presence_of_element_located((By.ID, "symbolTable"))
             )
             time.sleep(3)
-            records_text = self.driver.find_element(By.ID, "quantityHeader").text
+            records_text = self.driver.find_element(
+                By.ID, "quantityHeader"
+            ).text
             self.total_records = (
                 int(records_text.split("of")[1].strip().replace(",", ""))
                 if "of" in records_text
@@ -150,19 +160,25 @@ class DTNIQFeed:
     def extract_current_page(self):
         try:
             time.sleep(3)
-            rows = self.driver.find_element(By.ID, "symbolTable").find_elements(
-                By.CSS_SELECTOR, "tbody tr"
-            )
+            rows = self.driver.find_element(
+                By.ID, "symbolTable"
+            ).find_elements(By.CSS_SELECTOR, "tbody tr")
             if not rows:
                 return False
             page_data = [
                 {
-                    "symbol": row.find_elements(By.TAG_NAME, "td")[0].text.strip(),
-                    "description": row.find_elements(By.TAG_NAME, "td")[1].text.strip(),
+                    "symbol": row.find_elements(By.TAG_NAME, "td")[
+                        0
+                    ].text.strip(),
+                    "description": row.find_elements(By.TAG_NAME, "td")[
+                        1
+                    ].text.strip(),
                     "security_type": row.find_elements(By.TAG_NAME, "td")[
                         2
                     ].text.strip(),
-                    "exchange": row.find_elements(By.TAG_NAME, "td")[3].text.strip(),
+                    "exchange": row.find_elements(By.TAG_NAME, "td")[
+                        3
+                    ].text.strip(),
                     "listed_market": row.find_elements(By.TAG_NAME, "td")[
                         4
                     ].text.strip(),
@@ -183,7 +199,9 @@ class DTNIQFeed:
     def go_to_next_page(self):
         try:
             if self.total_records_extracted >= self.total_records:
-                logger.info("Reached the last page or extracted all records.")
+                logger.info(
+                    "Reached the last page or extracted all records."
+                )
                 return False
             next_button = WebDriverWait(self.driver, 5).until(
                 EC.element_to_be_clickable((By.ID, "nextButtonTop"))
@@ -220,14 +238,18 @@ class DTNIQFeed:
             logger.info("Browser closed")
 
     async def save_to_db(self):
+        self.metadata_manager = MetadataManager()
         if not self.symbols_data:
             logger.info("No data to save to database")
             return
 
         try:
-            existing_symbols_raw = await self.db.get_unique_column("symbol")
+            existing_symbols_raw = await self.db.get_unique_column(
+                "symbol"
+            )
             existing_symbols = set(
-                s.symbol if hasattr(s, "symbol") else s for s in existing_symbols_raw
+                s.symbol if hasattr(s, "symbol") else s
+                for s in existing_symbols_raw
             )
 
             new_records = []
@@ -242,7 +264,10 @@ class DTNIQFeed:
                 return
 
             await self.db.bulk_insert(new_records)
-            logger.info(f"Inserted {len(new_records)} new records into the database.")
+            logger.info(
+                f"Inserted {len(new_records)} new records into the database."
+            )
+            await self.metadata_manager.save_symbols_metadata(new_records)
 
             pl.DataFrame(new_records).write_parquet(self.output_file)
             logger.info(
@@ -262,7 +287,11 @@ class DTNIQFeed:
     ):
         try:
             await self.extract_all_data(
-                show_front_month, show_continuous, show_eminis, no_options, no_spreads
+                show_front_month,
+                show_continuous,
+                show_eminis,
+                no_options,
+                no_spreads,
             )
             await self.save_to_db()
             self.save_to_parquet()
@@ -280,7 +309,11 @@ class DTNIQFeed:
         no_spreads=False,
     ):
         self.select_model_and_filename(
-            show_front_month, show_continuous, show_eminis, no_options, no_spreads
+            show_front_month,
+            show_continuous,
+            show_eminis,
+            no_options,
+            no_spreads,
         )
         if not self.perform_search():
             logger.error("Initial search failed")
@@ -295,7 +328,9 @@ class DTNIQFeed:
             )
             time.sleep(3)
             if not self.extract_current_page():
-                logger.error(f"Failed to extract data from page {self.current_page}")
+                logger.error(
+                    f"Failed to extract data from page {self.current_page}"
+                )
                 break
             page_count += 1
         logger.info(

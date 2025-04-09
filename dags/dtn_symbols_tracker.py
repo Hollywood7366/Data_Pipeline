@@ -26,7 +26,7 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id="DTN_SYMBOLS_TRACKER_V1.0.3",
+    dag_id="DTN_SYMBOLS_TRACKER_V1.1.0",
     default_args=default_args,
     description="Fetch all symbols from multiple tables and append to Google Sheet",
     schedule_interval="@daily",

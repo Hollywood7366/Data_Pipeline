@@ -5,24 +5,48 @@ from typing import Any
 
 
 class Config:
-    ENVIRONMENT: str = "development"
-    DATABASE_URL: str = (
-        "mysql+aiomysql://root:1234@host.docker.internal:3306/probabilitiesunlimited"
-    )
-    LOCAL_DATABASE_URL: str = (
-        "mysql+aiomysql://root:1234@localhost:3306/probabilitiesunlimited"
-    )
-    SPREADSHEET_KEY: str = "1w07aJMtZx_f77zef_vIER-_xR1ygj7Kyqr76d6AjwuI"
+    ENVIRONMENT: str
+    DATABASE_URL: str
+    LOCAL_DATABASE_URL: str
+
+    SPREADSHEET_KEY: str
+
+    IQFEED_HOST: str
+    IQFEED_PORT: int
+    INTERVAL: str
+    START_DATE: str
+    END_DATE: str
+
+    EXCHANGE: str | None = None
+    SECURITY_TYPE: str | None = None
+    SHOW_FRONT_MONTH: bool
+    SHOW_CONTINUOUS: bool
+    SHOW_EMINIS: bool
+    NO_OPTIONS: bool
+    NO_SPREADS: bool
 
     @staticmethod
     def load_environment_variables(*env_files: str) -> None:
-        for env_file in env_files:
+        possible_paths = [
+            "src/.env",
+            "/opt/airflow/src/.env",
+            os.path.join(os.environ.get("AIRFLOW_HOME", ""), "src/.env"),
+        ]
+
+        found = False
+        for env_file in possible_paths + list(env_files):
             if os.path.exists(env_file):
+                found = True
                 with open(env_file) as file:
                     for line in file:
                         if line.strip() and not line.startswith("#"):
                             key, value = map(str.strip, line.split("=", 1))
                             os.environ[key] = value
+
+        if not found:
+            print(
+                "WARNING: No .env file found in any of the expected locations!"
+            )
 
     @staticmethod
     def get_env_variable(key: str, default=None) -> str | Any | None:
@@ -30,7 +54,11 @@ class Config:
 
     def __init__(self) -> None:
         for attr, default_value in self.__annotations__.items():
-            setattr(self, attr, self.get_env_variable(attr, default=default_value))
+            setattr(
+                self,
+                attr,
+                self.get_env_variable(attr, default=default_value),
+            )
 
 
 Config.load_environment_variables(".env")

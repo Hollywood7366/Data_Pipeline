@@ -8,7 +8,9 @@ from airflow.operators.python import PythonOperator
 from src.models import *
 from src.pipelines.extras.base import BaseDB
 from src.pipelines.google_sheet_pipeline import GoogleSheetSync
-from src.pipelines.transformations.parquet_misc import parquet_columns_naming
+from src.pipelines.transformations.parquet_misc import (
+    parquet_columns_naming,
+)
 from utils.atomic_creator import AtomicFileUpdate
 from utils.CONSTANTS import (
     CREDENTIALS_PATH,
@@ -33,7 +35,7 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id="DTN_SYMBOLS_HOURLY_TRACKER_V1.0.1",
+    dag_id="DTN_SYMBOLS_HOURLY_TRACKER_V1.1.0",
     default_args=default_args,
     description="Fetch IQFeed symbols from Google Sheet and update parquet hourly",
     schedule_interval="@hourly",
@@ -51,16 +53,17 @@ async def fetch_symbols_from_sheet():
         data_folder="data/GOOGLE_TO_LOCAL",
         auto_save=True,
     )
-    sheet_sync.update_dataframe()
+    success = sheet_sync.update_dataframe()
 
-    df = pl.read_parquet(SYMBOLS_RAW)
-    result_df = parquet_columns_naming(df)
-    symbols = result_df["column_0"].to_list()
+    if success:
+        df = pl.read_parquet(SYMBOLS_RAW)
+        result_df = parquet_columns_naming(df)
+        symbols = result_df["column_0"].to_list()
 
-    if not symbols:
-        logger.info("No symbols found in sheet.")
+        if not symbols:
+            logger.info("No symbols found in sheet.")
 
-    return symbols
+        return symbols
 
 
 async def fetch_and_save_db_records(symbols):
@@ -99,7 +102,9 @@ async def fetch_and_save_db_records(symbols):
                         "security_type": r.security_type,
                         "exchange": r.exchange,
                         "listed_market": r.listed_market,
-                        "created_at": r.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                        "created_at": r.created_at.strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
                     }
                 )
 
@@ -110,7 +115,9 @@ async def fetch_and_save_db_records(symbols):
         return
 
     full_df = pl.DataFrame(records)
-    atomic_update = AtomicFileUpdate(SYMBOLS_COMPLETE, f"{SYMBOLS_COMPLETE}.tmp")
+    atomic_update = AtomicFileUpdate(
+        SYMBOLS_COMPLETE, f"{SYMBOLS_COMPLETE}.tmp"
+    )
     atomic_update.perform_atomic_update(full_df)
 
     logger.info(f"Saved {len(records)} full records to {SYMBOLS_COMPLETE}")

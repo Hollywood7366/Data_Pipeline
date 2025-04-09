@@ -5,8 +5,9 @@ import polars as pl
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
+from src.config.config import config as cn
 from src.pipelines.iqfeed import historical
-from utils.CONSTANTS import SYMBOLS_RAW
+from utils.CONSTANTS import SYMBOLS_COMPLETE
 from utils.emails import send_dag_failure_email, send_dag_success_email
 
 default_args = {
@@ -21,7 +22,7 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id="HIST_META_SYMBOLS_V1.0.1",
+    dag_id="HIST_META_SYMBOLS_V1.1.0",
     default_args=default_args,
     description="Fetch historical data from IQFeed and save as parquet files per symbol",
     schedule_interval="@daily",
@@ -30,22 +31,23 @@ dag = DAG(
 
 
 def download_all_symbols():
-    if not os.path.exists(SYMBOLS_RAW):
+    if not os.path.exists(SYMBOLS_COMPLETE):
         raise FileNotFoundError("parquet not found")
 
-    df = pl.read_parquet(SYMBOLS_RAW, has_header=False, new_columns=["symbol"])
+    df = pl.read_parquet(SYMBOLS_COMPLETE)
     if df.is_empty():
         return
 
     symbols = df["symbol"].to_list()
 
     data = historical(
-        host="host.docker.internal",
-        port=9100,
-        start_date="20240101",
-        end_date="20240201",
-        interval="900",
+        host=cn.IQFEED_HOST,
+        port=int(cn.IQFEED_PORT),
+        start_date=cn.START_DATE,
+        end_date=cn.END_DATE,
+        interval=cn.INTERVAL,
         tickers=symbols,
+        records=df,
     )
 
 

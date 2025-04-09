@@ -1,10 +1,13 @@
-import os
 import socket
-
 import polars as pl
 
-from utils.atomic_creator import AtomicFileUpdate
+from src.pipelines.extras.asyncer import (
+    data_to_parquet_async,
+    run_async_task,
+)
+from src.pipelines.transformations.misc import ParquetDatabaseHandler
 from utils.logging import Logger
+from utils.util import base_path, clean_data
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
 
@@ -54,58 +57,29 @@ def receive_data(sock: socket.socket, recv_buffer=4096) -> str:
     return buffer
 
 
-def data_to_parquet(
-    data: str, sym: str, start_date: str, end_date: str, interval: str
-) -> None:
-    os.makedirs("data", exist_ok=True)
-
-    filename = f"{sym}_{start_date}_{end_date}_{interval}.parquet"
-    filepath = os.path.join("data", filename)
-
-    lines = [
-        line for line in data.split("\n") if not line.startswith("S,") and line.strip()
-    ]
-
-    if not lines:
-        logger.warning(f"No valid data for {sym}, skipping Parquet creation.")
+def data_to_parquet(data: str, sym: str, interval: str, records) -> None:
+    filtered_records = records.filter(pl.col("symbol") == sym)
+    if filtered_records.height == 0:
+        logger.warning(
+            f"No records found for symbol {sym}, skipping Parquet creation."
+        )
         return
 
-    headers = [
-        "DateTime",
-        "High",
-        "Low",
-        "Open",
-        "Close",
-        "TotalVolume",
-        "PeriodVolume",
-        "Unknown",
-    ]
-    formatted_rows = []
+    exchange = filtered_records.select("exchange").row(0)[0]
+    security_type = filtered_records.select("security_type").row(0)[0]
 
-    for line in lines:
-        parts = line.split(",")
-        if len(parts) >= 8 and parts[0] in ["LH", "DT", "T"]:
-            row = parts[1:]
-        else:
-            row = parts
-        if len(row) == 8:
-            formatted_rows.append(row)
-
+    formatted_rows = _parse_raw_data(data)
     if not formatted_rows:
-        logger.warning(f"No properly formatted rows for {sym}.")
+        logger.warning(
+            f"No valid data for {sym}, skipping Parquet creation."
+        )
         return
 
     try:
-        df = pl.DataFrame(formatted_rows, schema=headers)
-        atomic_update = AtomicFileUpdate(filepath, f"{filepath}.tmp")
-        atomic_update.perform_atomic_update(df)
-        logger.info(f"Data saved to {filepath}")
+        df = _create_dataframe(formatted_rows)
+        _save_data_and_metadata(df, sym, exchange, security_type, interval)
     except Exception as e:
         logger.error(f"Failed to save {sym} data to Parquet: {e}")
-
-
-def clean_data(data: str) -> str:
-    return data.replace("\r", "").replace(",\n", "\n").strip()
 
 
 def establish_live_feed(sock: socket.socket, ticker_name: str) -> None:
@@ -117,10 +91,106 @@ def establish_live_feed(sock: socket.socket, ticker_name: str) -> None:
         while True:
             data = receive_data(sock)
             if data:
-                print(clean_data(data))
+                return clean_data(data)
     except KeyboardInterrupt:
         logger.info("Live feed stopped by user.")
         close_socket(sock)
     except Exception as e:
         logger.error(f"Error in live feed: {e}")
         close_socket(sock)
+
+
+def _parse_raw_data(data: str) -> list:
+    lines = [
+        line
+        for line in data.split("\n")
+        if not line.startswith("S,") and line.strip()
+    ]
+
+    if not lines:
+        return []
+
+    formatted_rows = []
+    for line in lines:
+        parts = line.split(",")
+        if len(parts) >= 8 and parts[0] in ["LH", "DT", "T"]:
+            row = parts[1:]
+        else:
+            row = parts
+        if len(row) == 8:
+            formatted_rows.append(row)
+
+    return formatted_rows
+
+
+def _create_dataframe(formatted_rows: list) -> pl.DataFrame:
+    headers = [
+        "DateTime",
+        "High",
+        "Low",
+        "Open",
+        "Close",
+        "TotalVolume",
+        "PeriodVolume",
+        "Unknown",
+    ]
+
+    df = pl.DataFrame(formatted_rows, schema=headers)
+    df = df.drop("Unknown")
+
+    df = df.with_columns(
+        [
+            pl.col("High").cast(pl.Float64),
+            pl.col("Low").cast(pl.Float64),
+            pl.col("Open").cast(pl.Float64),
+            pl.col("Close").cast(pl.Float64),
+            pl.col("TotalVolume").cast(pl.Int64),
+            pl.col("PeriodVolume").cast(pl.Int64),
+        ]
+    )
+
+    return df
+
+
+def _save_data_and_metadata(
+    df: pl.DataFrame,
+    sym: str,
+    exchange: str,
+    security_type: str,
+    interval: str,
+) -> None:
+    parquet_handler = ParquetDatabaseHandler(
+        base_path=f"{base_path()}/storage"
+    )
+
+    file_path = parquet_handler.save_data(
+        exchange=exchange,
+        security_type=security_type,
+        timeframe=interval,
+        symbol=sym,
+        data=df,
+    )
+    logger.info(f"Data saved to {file_path}")
+
+    metadata_record = _create_metadata_record(df, sym)
+    run_async_task(data_to_parquet_async(sym, metadata_record))
+
+
+def _create_metadata_record(df: pl.DataFrame, sym: str) -> dict:
+    max_high = df.select(pl.col("High").max())[0, 0]
+    min_low = df.select(pl.col("Low").min())[0, 0]
+    total_volume = df.select(pl.col("TotalVolume").sum())[0, 0]
+    avg_close = df.select(pl.col("Close").mean())[0, 0]
+    last_datetime = df.select(pl.col("DateTime")).row(-1)[0]
+    count = df.height
+
+    return {
+        "symbol": sym,
+        "count": count,
+        "last_record_datetime": last_datetime,
+        "max_high": max_high,
+        "min_low": min_low,
+        "total_volume": total_volume,
+        "average_close": avg_close,
+        "period": "daily",
+    }

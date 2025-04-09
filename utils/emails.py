@@ -82,7 +82,9 @@ def send_task_email(context):
     smtp_host = os.getenv("AIRFLOW__SMTP__SMTP_HOST")
     smtp_port = int(os.getenv("AIRFLOW__SMTP__SMTP_PORT", 587))
 
-    recipient = os.getenv("AIRFLOW__SMTP__SMTP_MAIL_TO", "sarimsikander24@gmail.com")
+    recipient = os.getenv(
+        "AIRFLOW__SMTP__SMTP_MAIL_TO", "sarimsikander24@gmail.com"
+    )
 
     task_instance = context["task_instance"]
     dag_id = context["dag"].dag_id
@@ -101,7 +103,9 @@ def send_task_email(context):
             if "INFO" in line or "WARNING" in line
         ]
 
-    summary_html = "<h3>DAG Run Summary</h3><table border='1' cellpadding='5'>"
+    summary_html = (
+        "<h3>DAG Run Summary</h3><table border='1' cellpadding='5'>"
+    )
     summary_html += "<tr><th>Task</th><th>Status</th><th>Start Time</th><th>End Time</th><th>Duration</th></tr>"
 
     for task, details in dag_summary.items():
@@ -126,7 +130,9 @@ def send_task_email(context):
         status = "FAILED"
         error_message = str(context.get("exception", "Unknown error"))
         error_traceback = (
-            "".join(traceback.format_tb(context.get("exception").__traceback__))
+            "".join(
+                traceback.format_tb(context.get("exception").__traceback__)
+            )
             if context.get("exception")
             else "No traceback available"
         )
@@ -142,7 +148,9 @@ def send_task_email(context):
         </pre>
         """
     else:
-        subject = f"Airflow Success: DAG {dag_id} - Task {task_id} SUCCEEDED"
+        subject = (
+            f"Airflow Success: DAG {dag_id} - Task {task_id} SUCCEEDED"
+        )
         status = "SUCCEEDED"
         error_html = ""
 
@@ -194,7 +202,9 @@ def send_task_email(context):
         server.login(sender, password)
         server.send_message(msg)
         server.quit()
-        print(f"Email notification sent for {dag_id}.{task_id} - Status: {status}")
+        print(
+            f"Email notification sent for {dag_id}.{task_id} - Status: {status}"
+        )
     except Exception as e:
         print(f"Failed to send email: {str(e)}")
 
