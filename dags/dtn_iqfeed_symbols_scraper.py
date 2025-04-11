@@ -26,7 +26,7 @@ import polars as pl
 
 logger = Logger(name="dtn_iqfeed_scraper", log_dir="/opt/airflow/logs")
 
-BATCH_SIZE = 1000
+BATCH_SIZE = int(Variable.get('BATCH_SIZE_FOR_SCRAPER'))
 STATE_FILE = "/opt/airflow/data/DTN_SYMBOLS/scraper_state.json"
 
 
