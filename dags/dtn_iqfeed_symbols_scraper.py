@@ -248,8 +248,8 @@ def scrape_dtn_symbols(**kwargs):
 
             time.sleep(20)
             success = scraper.perform_search(
-                exchange=Variable.get('EXCHANGE'),
-                security_type=Variable.get('SECURITY_TYPE'),
+                exchange=Variable.get('EXCHANGE') if Variable.get('EXCHANGE') else None,
+                security_type=Variable.get('SECURITY_TYPE') if Variable.get('SECURITY_TYPE') else None,
                 show_front_month=(
                     True if Variable.get('SHOW_FRONT_MONTH') == "True" else False
                 ),
