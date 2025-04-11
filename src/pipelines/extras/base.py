@@ -42,9 +42,6 @@ class BaseDB:
                     ),
                 )
                 await session.commit()
-                logger.info(
-                    message=f"Successfully added {len(data)} records to the {self.model.__name__} table",
-                )
             except Exception as e:
                 await session.rollback()
                 logger.critical(
@@ -56,9 +53,6 @@ class BaseDB:
             try:
                 session.add(self.model(**data))
                 await session.commit()
-                logger.info(
-                    f"Successfully added a record to the {self.model.__name__} table"
-                )
             except Exception as e:
                 await session.rollback()
                 logger.critical(
@@ -70,9 +64,6 @@ class BaseDB:
             try:
                 session.add(instance)
                 await session.commit()
-                logger.info(
-                    f"Successfully updated a record in the {self.model.__name__} table"
-                )
             except Exception as e:
                 await session.rollback()
                 logger.critical(
