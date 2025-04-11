@@ -64,13 +64,11 @@ def enhanced_perform_search(
     no_options=False,
     no_spreads=False,
 ):
-    """Enhanced search implementation with better error handling and logging"""
     try:
         WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.ID, "htmlTable"))
         )
 
-        # Handle exchange selection
         if exchange and exchange != "ALL":
             driver.find_element(By.ID, "exchangeSelect").click()
             time.sleep(1)
@@ -79,7 +77,6 @@ def enhanced_perform_search(
             ).click()
             time.sleep(1)
 
-        # Handle security type selection
         if security_type and security_type != "ALL":
             driver.find_element(By.ID, "securityTypeSelect").click()
             time.sleep(1)
@@ -88,7 +85,6 @@ def enhanced_perform_search(
             ).click()
             time.sleep(1)
 
-        # Handle checkbox options
         handle_checkbox_options(
             driver, 
             show_front_month, 
@@ -97,23 +93,18 @@ def enhanced_perform_search(
             no_options, 
             no_spreads
         )
-
-        # Select HTML table format
         select_html_table_format(driver)
 
-        # Perform search
         search_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "searchButton"))
         )
         search_button.click()
 
-        # Wait for results
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "symbolTable"))
         )
         time.sleep(5)
 
-        # Extract record count
         total_records = extract_record_count(driver)
         logger.info(f"Found {total_records} total records.")
         
@@ -141,7 +132,6 @@ def handle_checkbox_options(
     no_options, 
     no_spreads
 ):
-    """Handle checkbox options for search filtering"""
     for option, checkbox_id in [
         (show_front_month, "frontMonthOnly"),
         (show_continuous, "continuousOnly"),
@@ -178,7 +168,6 @@ def select_html_table_format(driver):
                     logger.info("Selected HTML Table using ID")
             except NoSuchElementException:
                 try:
-                    # Try JavaScript approach
                     driver.execute_script(
                         """
                         var radios = document.querySelectorAll('input[type="radio"]');
@@ -194,7 +183,6 @@ def select_html_table_format(driver):
                 except Exception as js_error:
                     logger.warning(f"JavaScript selection failed: {js_error}")
                     
-                    # Try label approach
                     try:
                         label = driver.find_element(
                             By.XPATH, "//label[contains(text(), 'HTML Table')]"
@@ -209,7 +197,6 @@ def select_html_table_format(driver):
 
 
 def extract_record_count(driver):
-    """Extract the total record count from search results"""
     try:
         records_text = driver.find_element(By.ID, "quantityHeader").text
         total_records = (
@@ -224,7 +211,6 @@ def extract_record_count(driver):
 
 
 def log_exception_details():
-    """Log detailed exception information"""
     exc_type, exc_value, exc_traceback = sys.exc_info()
     logger.error("Exception traceback:")
     for line in traceback.format_exception(exc_type, exc_value, exc_traceback):
@@ -232,7 +218,6 @@ def log_exception_details():
 
 
 def get_variable_boolean(var_name, default=False):
-    """Get a boolean Airflow variable with proper type conversion"""
     try:
         value = Variable.get(var_name)
         return value.lower() == "true"
@@ -241,7 +226,6 @@ def get_variable_boolean(var_name, default=False):
 
 
 def get_variable_string(var_name, default=None):
-    """Get a string Airflow variable with proper default handling"""
     try:
         return Variable.get(var_name)
     except:
@@ -249,9 +233,7 @@ def get_variable_string(var_name, default=None):
 
 
 def save_state(state_data):
-    """Save the current scraping state to a file"""
     try:
-        # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
         
         with open(STATE_FILE, 'w') as f:
@@ -264,7 +246,6 @@ def save_state(state_data):
 
 
 def load_state():
-    """Load the previous scraping state if it exists"""
     try:
         if os.path.exists(STATE_FILE):
             with open(STATE_FILE, 'r') as f:
@@ -292,15 +273,12 @@ def load_state():
 
 
 def go_to_specific_page(driver, page_number):
-    """Navigate to a specific page in the results"""
     try:
-        # If we're already on page 1, no need to navigate
         if page_number == 1:
             return True
         
         logger.info(f"Attempting to navigate to page {page_number}")
         
-        # Check if we can use direct page navigation
         try:
             page_input = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.ID, "pageNumberInput"))
@@ -313,7 +291,6 @@ def go_to_specific_page(driver, page_number):
             )
             go_button.click()
             
-            # Wait for the table to reload
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.ID, "symbolTable"))
             )
@@ -324,7 +301,6 @@ def go_to_specific_page(driver, page_number):
         except Exception as e:
             logger.warning(f"Direct page navigation failed: {e}")
             
-            # Fall back to sequential navigation
             current_page = 1
             while current_page < page_number:
                 next_button = WebDriverWait(driver, 5).until(
@@ -350,7 +326,6 @@ def go_to_specific_page(driver, page_number):
 
 
 def extract_page_data(driver):
-    """Extract data from the current page"""
     try:
         time.sleep(3)
         rows = driver.find_element(By.ID, "symbolTable").find_elements(By.CSS_SELECTOR, "tbody tr")
@@ -380,29 +355,20 @@ def extract_page_data(driver):
 
 
 def save_batch_to_parquet(data, output_file, batch_num, first_batch=False):
-    """Save the current batch to a parquet file"""
     try:
-        # Make sure the directory exists
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         
         df = pl.DataFrame(data)
         
         if first_batch or not os.path.exists(output_file):
-            # First batch or file doesn't exist yet - create new file
-            # df.write_parquet(output_file)
             atomic_update = AtomicFileUpdate(
                 output_file, f"{output_file}.tmp"
             )
             atomic_update.perform_atomic_update(df)
             logger.info(f"Created new parquet file with {len(data)} records")
         else:
-            # Append to existing file
-            # First read existing data
             existing_df = pl.read_parquet(output_file)
-            # Combine with new data
             combined_df = pl.concat([existing_df, df])
-            # Write back to file
-            # combined_df.write_parquet(output_file)
             atomic_update = AtomicFileUpdate(
                 output_file, f"{output_file}.tmp"
             )
@@ -411,7 +377,6 @@ def save_batch_to_parquet(data, output_file, batch_num, first_batch=False):
             
         backup_file = output_file.replace(".parquet", f"_backup.parquet")
         
-        # If it's the first batch, create the backup from scratch
         if first_batch or not os.path.exists(backup_file):
             df.write_parquet(backup_file)
         else:
@@ -428,7 +393,6 @@ def save_batch_to_parquet(data, output_file, batch_num, first_batch=False):
 
 
 async def save_batch_to_db(data, db_manager):
-    """Save the current batch to the database"""
     try:
         if not data:
             logger.info("No data to save to database")
@@ -439,29 +403,25 @@ async def save_batch_to_db(data, db_manager):
             db_manager.metadata_manager = MetadataManager()
             logger.info("Initialized MetadataManager")
 
-        # Get existing symbols to avoid duplicates
         existing_symbols_raw = await db_manager.db.get_unique_column("symbol")
         existing_symbols = set(
             s.symbol if hasattr(s, "symbol") else s for s in existing_symbols_raw
         )
         
-        # Filter to only new records
         new_records = []
         for record in data:
             symbol = record["symbol"]
             if symbol not in existing_symbols:
                 new_records.append(record)
-                existing_symbols.add(symbol)  # Add to set to prevent duplicates in same batch
+                existing_symbols.add(symbol) 
         
         if not new_records:
             logger.info("No new symbols to insert in this batch")
             return True
             
-        # Insert new records
         await db_manager.db.bulk_insert(new_records)
         logger.info(f"Inserted {len(new_records)} new records into the database")
         
-        # Update metadata
         await db_manager.metadata_manager.save_symbols_metadata(new_records)
         logger.info(f"Updated metadata for {len(new_records)} symbols")
         
@@ -472,7 +432,6 @@ async def save_batch_to_db(data, db_manager):
 
 
 def navigate_to_next_page(driver):
-    """Navigate to the next page of results"""
     try:
         next_button = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.ID, "nextButtonTop"))
@@ -502,7 +461,6 @@ async def process_batch(
     model_file_pattern,
     search_params
 ):
-    """Process a batch of pages and save the data"""
     try:
         batch_data = []
         current_page = state["current_page"]
@@ -513,31 +471,24 @@ async def process_batch(
         logger.info(f"Starting batch {state['batch_number']} from page {current_page}")
         logger.info(f"Target batch size: {batch_size} records")
         
-        # Ensure we're on the correct starting page
         if current_page > 1:
             success = go_to_specific_page(driver, current_page)
             if not success:
                 logger.error(f"Failed to navigate to starting page {current_page}")
                 return False
         
-        # Process pages until we reach the batch size
         while records_in_batch < batch_size:
-            # Extract data from current page
             page_data = extract_page_data(driver)
             if not page_data:
                 logger.warning(f"No data found on page {current_page}, may have reached the end")
-                # Don't mark as complete here - this might just be a page with no data
-                # Check if we've actually processed all records before setting complete
                 if state["processed_records"] >= state["total_records"]:
                     state["complete"] = True
                     logger.info(f"All records processed ({state['processed_records']}/{state['total_records']}). Marking as complete.")
                 else:
-                    # This is a problem - we're not finding data but haven't processed all records
                     logger.error(f"No data found but only processed {state['processed_records']}/{state['total_records']} records.")
                     state["complete"] = False
                 break
                 
-            # Add to batch
             batch_data.extend(page_data)
             records_in_batch += len(page_data)
             state["processed_records"] += len(page_data)
@@ -546,22 +497,18 @@ async def process_batch(
             logger.info(f"Batch progress: {records_in_batch}/{batch_size} records")
             logger.info(f"Total progress: {state['processed_records']}/{state['total_records']} records")
             
-            # Save state frequently in case of failure
             state["current_page"] = current_page
             save_state(state)
             
-            # Check if we've completed the total records
             if state["processed_records"] >= state["total_records"]:
                 logger.info("Reached total record count, marking as complete")
                 state["complete"] = True
                 break
                 
-            # Navigate to next page if needed
             if records_in_batch < batch_size:
                 success = navigate_to_next_page(driver)
                 if not success:
                     logger.warning("Could not navigate to next page, may have reached the end")
-                    # Again, don't mark as complete unless we've processed all records
                     if state["processed_records"] >= state["total_records"]:
                         state["complete"] = True
                         logger.info(f"Navigation ended after processing all {state['processed_records']} records. Marking as complete.")
@@ -572,18 +519,13 @@ async def process_batch(
                 current_page += 1
                 state["current_page"] = current_page
         
-        # Save batch data to parquet
         first_batch = state["batch_number"] == 1 and first_page_in_batch == 1
         if batch_data:
-            # Determine output file based on search parameters
             actual_output_file = determine_output_file(model_file_pattern, search_params)
             
             save_batch_to_parquet(batch_data, actual_output_file, state["batch_number"], first_batch)
-            
-            # Save to database
             await save_batch_to_db(batch_data, db_manager)
             
-            # Update state for next batch
             state["batch_number"] += 1
             state["current_page"] = current_page
             save_state(state)
@@ -592,8 +534,6 @@ async def process_batch(
             return True
         else:
             logger.warning("No data collected in this batch")
-            # Don't automatically mark as complete when no data is collected
-            # It might just be a temporary issue
             if state["processed_records"] >= state["total_records"]:
                 state["complete"] = True
                 logger.info("No data in this batch, but all records have been processed. Marking as complete.")
@@ -609,10 +549,8 @@ async def process_batch(
         return False
 
 def determine_output_file(base_pattern, search_params):
-    """Determine the output file based on search parameters"""
     output_file = base_pattern
     
-    # Apply modifiers based on search parameters
     if search_params.get("show_front_month"):
         output_file = output_file.replace(".parquet", "_frontmonth.parquet")
     elif search_params.get("show_continuous"):
@@ -624,7 +562,6 @@ def determine_output_file(base_pattern, search_params):
     elif search_params.get("no_spreads"):
         output_file = output_file.replace(".parquet", "_nospreads.parquet")
     
-    # Make sure the directory exists
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     
     return output_file
@@ -636,10 +573,6 @@ async def run_batch_extraction(
     search_params,
     output_file
 ):
-    """Run the extraction process in batches"""
-    from src.pipelines.extras.metadata import MetadataManager
-    
-    # Initialize database connection
     scraper.select_model_and_filename(
         search_params.get("show_front_month", False),
         search_params.get("show_continuous", False),
@@ -648,10 +581,8 @@ async def run_batch_extraction(
         search_params.get("no_spreads", False),
     )
     
-    # Load previous state if any
     state = load_state()
     
-    # If this is a fresh start, perform search
     if state["current_page"] == 1 and state["total_records"] == 0:
         total_records, success = enhanced_perform_search(
             driver,
@@ -672,7 +603,6 @@ async def run_batch_extraction(
     else:
         logger.info(f"Resuming from previous state: page {state['current_page']}, {state['processed_records']}/{state['total_records']} records processed")
         
-        # Re-perform search to get to results page
         _, success = enhanced_perform_search(
             driver,
             exchange=search_params.get("exchange"),
@@ -687,7 +617,6 @@ async def run_batch_extraction(
         if not success:
             raise Exception("Failed to resume search")
     
-    # Process batches until complete
     while not state.get("complete", False):
         success = await process_batch(
             state,
@@ -714,25 +643,19 @@ async def run_batch_extraction(
     return state["processed_records"]
 
 def run_scraper(**kwargs):
-    """Main function to run the DTN IQFeed scraper with batching"""
     from src.pipelines.iqsymbols import DTNIQFeed
     
     setup_display()
     
-    # Get base output file path
     output_file = "/opt/airflow/data/DTN_SYMBOLS/dtn_symbols.parquet"
-    
-    # Create scraper instance
     scraper = DTNIQFeed(output_file=output_file)
     
     try:
-        # Setup driver
         driver = setup_chrome_driver()
         scraper.driver = driver
         scraper.driver.get(scraper.url)
         time.sleep(20)
         
-        # Get search parameters from Airflow variables
         search_params = {
             "exchange": get_variable_string('EXCHANGE'),
             "security_type": get_variable_string('SECURITY_TYPE'),
@@ -743,7 +666,6 @@ def run_scraper(**kwargs):
             "no_spreads": get_variable_boolean('NO_SPREADS'),
         }
         
-        # Run batch extraction with asyncio
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -780,7 +702,6 @@ def run_scraper(**kwargs):
         
         raise Exception(f"DTN symbol scraping failed: {str(e)}")
     finally:
-        # Ensure driver is closed
         if hasattr(scraper, "driver") and scraper.driver:
             try:
                 scraper.driver.quit()
@@ -790,26 +711,19 @@ def run_scraper(**kwargs):
 
 
 def scrape_dtn_symbols(**kwargs):
-    """Airflow task function to scrape DTN symbols with batching"""
     try:
         return run_scraper(**kwargs)
     except Exception as outer_e:
-        # Log the full stack trace 
         logger.error(f"Scraper setup failed: {str(outer_e)}")
         log_exception_details()
         raise Exception(f"Setup failed: {str(outer_e)}")
 
-
-# Reset state function for manual cleanup
 def reset_scraper_state(**kwargs):
-    """Reset the scraper state file only if all records have been processed successfully."""
     try:
         if os.path.exists(STATE_FILE):
-            # Load the state file to check completion status
             with open(STATE_FILE, 'r') as f:
                 state = json.load(f)
             
-            # Check if processing is complete and all records have been processed
             total_records = state.get("total_records", 0)
             processed_records = state.get("processed_records", 0)
             
@@ -818,7 +732,6 @@ def reset_scraper_state(**kwargs):
                 logger.info(f"Scraping completed successfully. All {processed_records} records processed. State file removed.")
                 return "Scraper state file removed - all records processed successfully"
             else:
-                # Add detailed logging about the progress
                 remaining = total_records - processed_records
                 progress_pct = (processed_records / total_records * 100) if total_records > 0 else 0
                 
@@ -834,13 +747,11 @@ def reset_scraper_state(**kwargs):
         return f"Failed to process state file: {e}"
 
 def inspect_state_file(**kwargs):
-    """Task to inspect the current state file and provide diagnostic information."""
     try:
         if os.path.exists(STATE_FILE):
             with open(STATE_FILE, 'r') as f:
                 state = json.load(f)
             
-            # Create a comprehensive diagnostic report
             total_records = state.get("total_records", 0)
             processed_records = state.get("processed_records", 0)
             current_page = state.get("current_page", 1)
@@ -869,7 +780,6 @@ def inspect_state_file(**kwargs):
         return f"Error inspecting state file: {e}"
 
 
-# DAG definition
 default_args = {
     "owner": "Sarim Sikander",
     "start_date": datetime(2025, 4, 1),
