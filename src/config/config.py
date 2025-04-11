@@ -9,21 +9,8 @@ class Config:
     DATABASE_URL: str
     LOCAL_DATABASE_URL: str
 
-    SPREADSHEET_KEY: str
-
     IQFEED_HOST: str
     IQFEED_PORT: int
-    INTERVAL: str
-    START_DATE: str
-    END_DATE: str
-
-    EXCHANGE: str | None = None
-    SECURITY_TYPE: str | None = None
-    SHOW_FRONT_MONTH: bool
-    SHOW_CONTINUOUS: bool
-    SHOW_EMINIS: bool
-    NO_OPTIONS: bool
-    NO_SPREADS: bool
 
     @staticmethod
     def load_environment_variables(*env_files: str) -> None:
@@ -44,9 +31,7 @@ class Config:
                             os.environ[key] = value
 
         if not found:
-            print(
-                "WARNING: No .env file found in any of the expected locations!"
-            )
+            pass
 
     @staticmethod
     def get_env_variable(key: str, default=None) -> str | Any | None:

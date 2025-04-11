@@ -4,11 +4,12 @@ from datetime import datetime
 import polars as pl
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.models import Variable
 
 from src.models import *
 from src.pipelines.extras.base import BaseDB
 from src.pipelines.google_sheet_pipeline import GoogleSheetSync
-from utils.CONSTANTS import CREDENTIALS_PATH, SPREADSHEET_KEY
+from utils.CONSTANTS import CREDENTIALS_PATH
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
 
@@ -59,7 +60,7 @@ def update_dropdown_symbols():
 
         sheet = GoogleSheetSync(
             credentials_path=CREDENTIALS_PATH,
-            spreadsheet_key=SPREADSHEET_KEY,
+            spreadsheet_key=Variable.get('SPREADSHEET_KEY'),
             worksheet_name=0,
             auto_save=False,
         )

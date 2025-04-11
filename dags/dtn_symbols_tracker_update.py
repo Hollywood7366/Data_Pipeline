@@ -4,6 +4,7 @@ from datetime import datetime
 import polars as pl
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.models import Variable
 
 from src.models import *
 from src.pipelines.extras.base import BaseDB
@@ -14,7 +15,6 @@ from src.pipelines.transformations.parquet_misc import (
 from utils.atomic_creator import AtomicFileUpdate
 from utils.CONSTANTS import (
     CREDENTIALS_PATH,
-    SPREADSHEET_KEY,
     SYMBOLS_COMPLETE,
     SYMBOLS_RAW,
 )
@@ -47,7 +47,7 @@ dag = DAG(
 async def fetch_symbols_from_sheet():
     sheet_sync = GoogleSheetSync(
         credentials_path=CREDENTIALS_PATH,
-        spreadsheet_key=SPREADSHEET_KEY,
+        spreadsheet_key=Variable.get('SPREADSHEET_KEY'),
         worksheet_name=1,
         filename="selectedsymbols.parquet",
         data_folder="data/GOOGLE_TO_LOCAL",

@@ -6,10 +6,9 @@ import time
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
+from airflow.models import Variable
 
-from src.config.config import config as cn
 from utils.emails import send_dag_failure_email, send_dag_success_email
-
 
 def setup_display():
     subprocess.Popen(["Xvfb", ":99", "-screen", "0", "1920x1080x24"])
@@ -249,17 +248,17 @@ def scrape_dtn_symbols(**kwargs):
 
             time.sleep(20)
             success = scraper.perform_search(
-                exchange=cn.EXCHANGE,
-                security_type=cn.SECURITY_TYPE,
+                exchange=Variable.get('EXCHANGE'),
+                security_type=Variable.get('SECURITY_TYPE'),
                 show_front_month=(
-                    True if cn.SHOW_FRONT_MONTH == "True" else False
+                    True if Variable.get('SHOW_FRONT_MONTH') == "True" else False
                 ),
                 show_continuous=(
-                    True if cn.SHOW_CONTINUOUS == "True" else False
+                    True if Variable.get('SHOW_CONTINUOUS') == "True" else False
                 ),
-                show_eminis=True if cn.SHOW_EMINIS == "True" else False,
-                no_options=True if cn.NO_OPTIONS == "True" else False,
-                no_spreads=True if cn.NO_SPREADS == "True" else False,
+                show_eminis=True if Variable.get('SHOW_EMINIS') == "True" else False,
+                no_options=True if Variable.get('NO_OPTIONS') == "True" else False,
+                no_spreads=True if Variable.get('NO_SPREADS') == "True" else False,
             )
 
             if not success:

@@ -4,6 +4,7 @@ from datetime import datetime
 import polars as pl
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.models import Variable
 
 from src.config.config import config as cn
 from src.pipelines.iqfeed import historical
@@ -43,9 +44,9 @@ def download_all_symbols():
     data = historical(
         host=cn.IQFEED_HOST,
         port=int(cn.IQFEED_PORT),
-        start_date=cn.START_DATE,
-        end_date=cn.END_DATE,
-        interval=cn.INTERVAL,
+        start_date=Variable.get('START_DATE'),
+        end_date=Variable.get('END_DATE'),
+        interval=Variable.get('INTERVAL'),
         tickers=symbols,
         records=df,
     )
