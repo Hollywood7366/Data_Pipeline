@@ -11,6 +11,8 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 from airflow.models import Variable, XCom
+from airflow.operators.python import ShortCircuitOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -779,6 +781,17 @@ def inspect_state_file(**kwargs):
         logger.error(f"Failed to inspect state file: {e}")
         return f"Error inspecting state file: {e}"
 
+def should_continue(**kwargs):
+    try:
+        if os.path.exists(STATE_FILE):
+            with open(STATE_FILE, 'r') as f:
+                state = json.load(f)
+            return not state.get("complete", False)
+        return False
+    except Exception as e:
+        logger.error(f"Error checking state file for loop logic: {e}")
+        return False
+
 
 default_args = {
     "owner": "Sarim Sikander",
@@ -821,5 +834,20 @@ with DAG(
         python_callable=inspect_state_file,
         provide_context=True,
     )
+
+    check_complete_task = ShortCircuitOperator(
+        task_id="check_if_should_continue",
+        python_callable=should_continue,
+        provide_context=True,
+        trigger_rule="all_done",
+    )
+
+    trigger_self_task = TriggerDagRunOperator(
+        task_id="trigger_self_if_not_complete",
+        trigger_dag_id="DTN_IQFEED_BATCH_SCRAPER_V1.0.0",
+        wait_for_completion=False,
+        reset_dag_run=False,
+        trigger_rule="all_done",
+    )
     
-    scrape_task >> inspect_state_task >> reset_state_task
+    scrape_task >> inspect_state_task >> reset_state_task >> check_complete_task >> trigger_self_task
