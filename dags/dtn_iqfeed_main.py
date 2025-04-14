@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import polars as pl
 from airflow import DAG
@@ -20,14 +20,17 @@ default_args = {
     "email": "sarimsikander24@gmail.com",
     "on_failure_callback": send_dag_failure_email,
     "on_success_callback": send_dag_success_email,
+    "retries": 3,  
+    "retry_delay": timedelta(minutes=10),
 }
 
 dag = DAG(
     dag_id="HIST_META_SYMBOLS_V1.1.0",
     default_args=default_args,
     description="Fetch historical data from IQFeed and save as parquet files per symbol",
-    schedule_interval="@daily",
+    schedule_interval="0 0 * * *",
     catchup=False,
+    tags=["iqfeed", "symbols", "db"],
 )
 
 

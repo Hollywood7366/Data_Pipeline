@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import polars as pl
 from airflow import DAG
@@ -32,6 +32,8 @@ default_args = {
     "email": "sarimsikander24@gmail.com",
     "on_failure_callback": send_dag_failure_email,
     "on_success_callback": send_dag_success_email,
+    "retries": 3,  
+    "retry_delay": timedelta(minutes=10),
 }
 
 dag = DAG(
@@ -39,6 +41,7 @@ dag = DAG(
     default_args=default_args,
     description="Fetch IQFeed symbols from Google Sheet and update parquet hourly",
     schedule_interval="@hourly",
+    start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=["iqfeed", "google_sheets", "parquet"],
 )

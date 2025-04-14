@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import subprocess
 import sys
@@ -789,14 +789,16 @@ default_args = {
     "email": "sarimsikander24@gmail.com",
     "on_failure_callback": send_dag_failure_email,
     "on_success_callback": send_dag_success_email,
+    "retries": 3,  
+    "retry_delay": timedelta(minutes=10),
 }
 
 with DAG(
     dag_id="DTN_IQFEED_BATCH_SCRAPER_V1.0.0",
     default_args=default_args,
     description="Scrape symbols from DTN IQFeed using Selenium with batch processing",
-    schedule_interval="0 0 * * *",
-    start_date=days_ago(1),
+    schedule_interval="0 1 * * *",
+    start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=["scraping", "dtn", "iqfeed", "symbols", "batch"],
 ) as dag:

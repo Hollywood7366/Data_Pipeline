@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import polars as pl
 from airflow import DAG
@@ -24,13 +24,15 @@ default_args = {
     "email": "sarimsikander24@gmail.com",
     "on_failure_callback": send_dag_failure_email,
     "on_success_callback": send_dag_success_email,
+    "retries": 3,  
+    "retry_delay": timedelta(minutes=10),
 }
 
 dag = DAG(
     dag_id="DTN_SYMBOLS_TRACKER_V1.1.0",
     default_args=default_args,
     description="Fetch all symbols from multiple tables and append to Google Sheet",
-    schedule_interval="@daily",
+    schedule_interval=["0 23 * * *", "30 23 * * *"],
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=["google_sheets", "symbols", "db"],
