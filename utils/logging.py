@@ -15,15 +15,16 @@ class Logger:
         backup_count=5,
     ):
         self.logger = logging.getLogger(name)
+    
+        if self.logger.handlers:
+            return
+            
         self.logger.setLevel(logging.DEBUG)
         self.log_dir = log_dir
         self.max_file_size = max_file_size
         self.backup_count = backup_count
 
         os.makedirs(self.log_dir, exist_ok=True)
-
-        if self.logger.handlers:
-            self.logger.handlers.clear()
 
         console_handler = logging.StreamHandler()
         console_handler.setLevel(console_level)
@@ -38,6 +39,8 @@ class Logger:
         self._add_file_handler("info", logging.INFO, file_level)
         self._add_file_handler("warning", logging.WARNING, file_level)
         self._add_file_handler("error", logging.ERROR, file_level)
+        
+        self.logger.propagate = False
 
     def _add_file_handler(self, level_name, level, min_level):
         if level < min_level:
