@@ -25,6 +25,8 @@ from utils.atomic_creator import AtomicFileUpdate
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
 import polars as pl
+from dotenv import load_dotenv
+load_dotenv(dotenv_path="/opt/airflow/.env") 
 
 logger = Logger(name="dtn_iqfeed_scraper", log_dir="/opt/airflow/logs")
 

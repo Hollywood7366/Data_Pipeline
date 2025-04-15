@@ -15,6 +15,8 @@ from src.pipelines.iqfeed import historical
 from utils.CONSTANTS import SYMBOLS_COMPLETE
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
+from dotenv import load_dotenv
+load_dotenv(dotenv_path="/opt/airflow/.env") 
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
 

@@ -8,7 +8,9 @@ from airflow.operators.python import PythonOperator
 from utils.emails import send_dag_failure_email
 from utils.util import base_path
 from utils.logging import Logger
+from dotenv import load_dotenv
 
+load_dotenv(dotenv_path="/opt/airflow/.env") 
 logger = Logger(name="dtn_iqfeed_deduplication", log_dir="/opt/airflow/logs")
 
 default_args = {
