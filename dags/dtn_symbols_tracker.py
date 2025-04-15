@@ -59,6 +59,8 @@ def update_dropdown_symbols():
         if not all_symbols:
             logger.info("No symbols found across tables")
             return
+        
+        logger.info(f"Found {len(all_symbols)} unique symbols across all tables")
 
         sheet = GoogleSheetSync(
             credentials_path=CREDENTIALS_PATH,
@@ -66,21 +68,37 @@ def update_dropdown_symbols():
             worksheet_name=0,
             auto_save=False,
         )
-
-        existing_values = sheet.worksheet.col_values(1)
-        existing_symbols = set(existing_values)
-        new_symbols = sorted(all_symbols - existing_symbols)
-
-        if not new_symbols:
-            logger.info("No new symbols to add.")
-            return
-
-        df = pl.DataFrame({"symbol": new_symbols})
-
-        start_row = len(existing_symbols) + 1
-        sheet.worksheet.update(f"A{start_row}", df.rows())
-
-        logger.info(f"Added {len(new_symbols)} new symbols to the sheet.")
+        
+        try:
+            worksheets = [ws for ws in sheet.sheet.worksheets() if ws.title.startswith("Symbols_Batch_")]
+            
+            if not worksheets:
+                logger.info("No Symbols_Batch sheets found, creating first batch sheet")
+                new_ws = sheet.sheet.add_worksheet(title="Symbols_Batch_0", rows=100010, cols=1)
+                worksheets = [new_ws]
+            
+            symbols_list = sorted(list(all_symbols))
+            batch_size = 100000
+            symbol_batches = [symbols_list[i:i+batch_size] for i in range(0, len(symbols_list), batch_size)]
+            
+            total_added = 0
+            for i, batch in enumerate(symbol_batches):
+                if i < len(worksheets):
+                    ws = worksheets[i]
+                    ws.clear() 
+                    symbols_2d = [[s] for s in batch]
+                    ws.update("A1", symbols_2d)
+                    total_added += len(batch)
+                else:
+                    new_ws = sheet.sheet.add_worksheet(title=f"Symbols_Batch_{i}", rows=len(batch)+10, cols=1)
+                    symbols_2d = [[s] for s in batch]
+                    new_ws.update("A1", symbols_2d)
+                    total_added += len(batch)
+            
+            logger.info(f"Total symbols added: {total_added}")
+            
+        except Exception as e:
+            logger.error(f"Error updating symbols in sheets: {e}")
 
     asyncio.run(run())
 
