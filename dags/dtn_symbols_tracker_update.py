@@ -51,7 +51,7 @@ async def fetch_symbols_from_sheet():
     sheet_sync = GoogleSheetSync(
         credentials_path=CREDENTIALS_PATH,
         spreadsheet_key=Variable.get('SPREADSHEET_KEY'),
-        worksheet_name=1,
+        worksheet_name=0,
         filename="selectedsymbols.parquet",
         data_folder="data/GOOGLE_TO_LOCAL",
         auto_save=True,
