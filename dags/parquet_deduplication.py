@@ -23,12 +23,12 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id="DEDUPLICATION_PARQUET_FILES_V1.0.1",
+    dag_id=f"DEDUPLICATION_PARQUET_FILES_{os.getenv("DEDUPLICATION_PARQUET_FILES")}",
     default_args=default_args,
     description="Scan storage directory for parquet files and remove duplicate rows based on DateTime",
     schedule_interval="0 0,18 * * *",
     catchup=False,
-    tags=["parquet", "deduplication", "data_cleaning"],
+    tags=["parquet", "deduplication", "data_cleaning", f"pipeline_version:{os.getenv("PIPELINE_VERSION")}"],
 )
 
 

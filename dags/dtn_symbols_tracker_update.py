@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
+import os
 
 import polars as pl
 from airflow import DAG
@@ -37,13 +38,13 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id="DTN_SYMBOLS_HOURLY_TRACKER_V1.1.0",
+    dag_id=f"DTN_SYMBOLS_HOURLY_TRACKER_{os.getenv("DTN_SYMBOLS_HOURLY_TRACKER")}",
     default_args=default_args,
     description="Fetch IQFeed symbols from Google Sheet and update parquet hourly",
     schedule_interval="0 */3 * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=["iqfeed", "google_sheets", "parquet"],
+    tags=["iqfeed", "google_sheets", "parquet",f"pipeline_version:{os.getenv("PIPELINE_VERSION")}"],
 )
 
 

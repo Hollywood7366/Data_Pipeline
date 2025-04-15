@@ -32,12 +32,12 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id="HIST_META_SYMBOLS_V1.1.0",
+    dag_id=f"HIST_META_SYMBOLS_{os.getenv("HIST_META_SYMBOLS")}",
     default_args=default_args,
     description="Fetch historical data from IQFeed and save as parquet files per symbol",
     schedule_interval="0 0 * * *",
     catchup=False,
-    tags=["iqfeed", "symbols", "db"],
+    tags=["iqfeed", "symbols", "db", f"pipeline_version:{os.getenv("PIPELINE_VERSION")}"],
 )
 
 def should_continue(**context):
