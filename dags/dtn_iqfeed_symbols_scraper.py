@@ -807,13 +807,13 @@ default_args = {
 }
 
 with DAG(
-    dag_id=f"DTN_IQFEED_BATCH_SCRAPER_{os.getenv("DTN_IQFEED_BATCH_SCRAPER")}",
+    dag_id=f"DTN_IQFEED_BATCH_SCRAPER_{os.getenv('DTN_IQFEED_BATCH_SCRAPER')}",
     default_args=default_args,
     description="Scrape symbols from DTN IQFeed using Selenium with batch processing",
     schedule_interval="0 1 * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=["scraping", "dtn", "iqfeed", "symbols", "batch",f"pipeline_version:{os.getenv("PIPELINE_VERSION")}"],
+    tags=["scraping", "dtn", "iqfeed", "symbols", "batch",f"pipeline_version:{os.getenv('PIPELINE_VERSION')}"],
 ) as dag:
 
     scrape_task = PythonOperator(
