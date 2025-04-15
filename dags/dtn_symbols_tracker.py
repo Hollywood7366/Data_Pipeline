@@ -31,13 +31,13 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id=f"DTN_SYMBOLS_TRACKER_{os.getenv('DTN_SYMBOLS_TRACKER')}",
+    dag_id=f"DTN_SYMBOLS_TRACKER_{os.getenv('DTN_SYMBOLS_TRACKER','v1_2')}",
     default_args=default_args,
     description="Fetch all symbols from multiple tables and append to Google Sheet",
     schedule_interval="*/30 23 * * *" ,
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=["google_sheets", "symbols", "db", f"pipeline_version:{os.getenv('PIPELINE_VERSION')}"],
+    tags=["google_sheets", "symbols", "db", f"pipeline_version:{os.getenv('PIPELINE_VERSION','v1_2')}"],
 )
 
 
