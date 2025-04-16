@@ -522,7 +522,8 @@ async def process_batch(
     output_file,
     model_file_pattern,
     search_params,
-    only_first_row=False,  # Add this parameter
+    only_first_row=False,
+    skip_parquet_save=False,
 ):
     try:
         batch_data = []
@@ -547,7 +548,6 @@ async def process_batch(
                 return False
 
         while records_in_batch < batch_size:
-            # Pass the only_first_row parameter to extract_page_data
             page_data = extract_page_data(
                 driver, only_first_row=only_first_row
             )
@@ -584,7 +584,6 @@ async def process_batch(
             state["current_page"] = current_page
             save_state(state)
 
-            # If only taking first row, mark as complete after processing it
             if only_first_row:
                 logger.info(
                     "Only first row requested - marking as complete"
@@ -630,12 +629,14 @@ async def process_batch(
                 model_file_pattern, search_params
             )
 
-            save_batch_to_parquet(
-                batch_data,
-                actual_output_file,
-                state["batch_number"],
-                first_batch,
-            )
+            if not skip_parquet_save:
+                save_batch_to_parquet(
+                    batch_data,
+                    actual_output_file,
+                    state["batch_number"],
+                    first_batch,
+                )
+
             await save_batch_to_db(batch_data, db_manager)
 
             state["batch_number"] += 1
@@ -717,45 +718,23 @@ def load_search_texts_from_csv(csv_path):
 
 
 async def run_batch_extraction(
-    scraper,
-    driver,
-    search_params,
-    output_file
+    scraper, driver, search_params, output_file
 ):
-    csv_path = search_params.get("search_texts_csv") or get_variable_string("SEARCH_TEXTS_CSV_PATH")
+    csv_path = search_params.get(
+        "search_texts_csv"
+    ) or get_variable_string("SEARCH_TEXTS_CSV_PATH")
     search_texts = load_search_texts_from_csv(csv_path) if csv_path else []
 
     if not search_texts:
         return await run_batch_extraction_single(
-            scraper,
-            driver,
-            search_params,
-            output_file
+            scraper, driver, search_params, output_file
         )
 
-    all_records = []
-    
-    if os.path.exists(output_file):
-        try:
-            existing_df = pl.read_parquet(output_file)
-            existing_records = existing_df.to_dicts()
-            all_records.extend(existing_records)
-            existing_symbols = set(existing_df['symbol'].to_list())
-            logger.info(f"Loaded {len(existing_records)} existing records from {output_file}")
-        except Exception as e:
-            logger.warning(f"Failed to read existing parquet file: {e}")
-            existing_symbols = set()
-    else:
-        existing_symbols = set()
-        logger.info(f"No existing file found at {output_file}, will create new file")
+    all_symbol_records = []
 
     for text in search_texts:
-        logger.info(f"\n--- Starting search for text: '{text}' ---")        
-        if text in existing_symbols:
-            logger.info(f"Symbol '{text}' already exists in output file, skipping")
-            continue
-            
-        scraper.symbols_data = []
+        logger.info(f"\n--- Starting search for text: '{text}' ---")
+        scraper.symbols_data.clear()
 
         scraper.select_model_and_filename(
             search_params.get("show_front_month", False),
@@ -769,7 +748,9 @@ async def run_batch_extraction(
         time.sleep(5)
 
         if not apply_search_text_filter(driver, text):
-            logger.warning(f"Skipping search text '{text}' due to input failure")
+            logger.warning(
+                f"Skipping search text '{text}' due to input failure"
+            )
             continue
 
         total_records, success = enhanced_perform_search(
@@ -781,14 +762,22 @@ async def run_batch_extraction(
             show_eminis=search_params.get("show_eminis", False),
             no_options=search_params.get("no_options", False),
             no_spreads=search_params.get("no_spreads", False),
-            search_text=text
+            search_text=text,
         )
 
         if not success:
             continue
 
         state = load_state()
-        state.update({"current_page": 1, "processed_records": 0, "total_records": total_records, "batch_number": 1, "complete": False})
+        state.update(
+            {
+                "current_page": 1,
+                "processed_records": 0,
+                "total_records": total_records,
+                "batch_number": 1,
+                "complete": False,
+            }
+        )
         save_state(state)
 
         while not state.get("complete", False):
@@ -799,32 +788,69 @@ async def run_batch_extraction(
                 output_file,
                 output_file,
                 search_params,
-                only_first_row=True
+                only_first_row=True,
+                skip_parquet_save=True,
             )
             if not success:
                 break
 
         if scraper.symbols_data:
-            matching_records = [record for record in scraper.symbols_data if record["symbol"] == text]
+            matching_records = [
+                record
+                for record in scraper.symbols_data
+                if record["symbol"] == text
+            ]
             if matching_records:
-                all_records.extend(matching_records)
-                existing_symbols.add(text)
-                logger.info(f"Added match for '{text}' to combined dataset")
+                all_symbol_records.extend(matching_records)
+                logger.info(
+                    f"Added match for '{text}' to combined dataset"
+                )
             else:
-                logger.warning(f"Exact match for '{text}' not found in scraped data")
-        
+                logger.warning(
+                    f"Exact match for '{text}' not found in scraped data"
+                )
         logger.info(f"Completed search for text: '{text}'")
 
-    if all_records:
-        final_df = pl.DataFrame(all_records)
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        atomic_update = AtomicFileUpdate(output_file, f"{output_file}.tmp")
-        atomic_update.perform_atomic_update(final_df)
-        
-        logger.info(f"Successfully saved combined dataset with {len(all_records)} records to {output_file}")
+    if all_symbol_records:
+        df = pl.DataFrame(all_symbol_records)
+
+        if os.path.exists(output_file):
+            try:
+                existing_df = pl.read_parquet(output_file)
+                existing_symbols = set(existing_df["symbol"].to_list())
+                new_records_df = df.filter(
+                    ~pl.col("symbol").is_in(existing_symbols)
+                )
+                if len(new_records_df) > 0:
+                    combined_df = pl.concat([existing_df, new_records_df])
+                    logger.info(
+                        f"Appending {len(new_records_df)} new records to existing file with {len(existing_df)} records"
+                    )
+                    atomic_update = AtomicFileUpdate(
+                        output_file, f"{output_file}.tmp"
+                    )
+                    atomic_update.perform_atomic_update(combined_df)
+                else:
+                    logger.info("No new records to add to existing file")
+            except Exception as e:
+                logger.error(
+                    f"Error reading/merging with existing file: {e}"
+                )
+                atomic_update = AtomicFileUpdate(
+                    output_file, f"{output_file}.tmp"
+                )
+                atomic_update.perform_atomic_update(df)
+        else:
+            atomic_update = AtomicFileUpdate(
+                output_file, f"{output_file}.tmp"
+            )
+            atomic_update.perform_atomic_update(df)
+            logger.info(
+                f"Saved combined DataFrame of {len(df)} records from all search texts"
+            )
     else:
-        logger.warning("No data collected to save")
-    
+        logger.warning("No data collected from any search text")
+
     return True
 
 
