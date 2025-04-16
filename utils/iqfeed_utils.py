@@ -7,6 +7,7 @@ from src.pipelines.extras.asyncer import (
     run_async_task,
 )
 from src.pipelines.transformations.misc import ParquetDatabaseHandler
+from utils.CONSTANTS import STORAGE_DIR
 from utils.logging import Logger
 from utils.util import base_path, clean_data
 
@@ -161,7 +162,7 @@ def _save_data_and_metadata(
     interval: str,
 ) -> None:
     parquet_handler = ParquetDatabaseHandler(
-        base_path=f"{base_path()}/storage"
+        base_path=STORAGE_DIR
     )
 
     file_path = parquet_handler.save_data(

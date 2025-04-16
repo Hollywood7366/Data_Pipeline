@@ -7,6 +7,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from dotenv import load_dotenv
 
+from utils.CONSTANTS import STORAGE_DIR
 from utils.emails import send_dag_failure_email
 from utils.logging import Logger
 from utils.util import base_path
@@ -94,7 +95,7 @@ def deduplicate_parquet_file(file_path):
 
 
 def process_all_parquet_files(**kwargs):
-    storage_dir = f"{base_path()}/storage"
+    storage_dir = STORAGE_DIR
 
     parquet_files = find_parquet_files(storage_dir)
     logger.info(f"Found {len(parquet_files)} parquet files to process")
