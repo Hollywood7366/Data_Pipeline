@@ -11,6 +11,7 @@ def base_path() -> str:
 def clean_data(data: str) -> str:
     return data.replace("\r", "").replace(",\n", "\n").strip()
 
+
 def _parse_raw_data(data: str) -> list:
     lines = [
         line

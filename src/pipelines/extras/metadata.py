@@ -28,9 +28,7 @@ class MetadataManager:
 
                 if existing_metadata:
                     existing_metadata.count += 1
-                    existing_metadata.status = SYMBOLS_METADATA_STATUS[
-                        1
-                    ]
+                    existing_metadata.status = SYMBOLS_METADATA_STATUS[1]
                     await self.db.update(existing_metadata)
                 else:
                     await self.db.create(metadata)

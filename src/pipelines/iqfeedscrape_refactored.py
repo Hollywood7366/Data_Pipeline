@@ -1,30 +1,30 @@
-from datetime import datetime
+import asyncio
+import json
 import os
 import subprocess
 import sys
 import time
 import traceback
-import asyncio
-import json
+from datetime import datetime
 
+import polars as pl
 from airflow.models import Variable
-
+from dotenv import load_dotenv
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import NoSuchElementException
 
 from utils.atomic_creator import AtomicFileUpdate
 from utils.logging import Logger
-import polars as pl
-from dotenv import load_dotenv
-load_dotenv(dotenv_path="/opt/airflow/.env") 
+
+load_dotenv(dotenv_path="/opt/airflow/.env")
 
 logger = Logger(name="dtn_iqfeed_scraper", log_dir="/opt/airflow/logs")
 
-BATCH_SIZE = int(Variable.get('BATCH_SIZE_FOR_SCRAPER'))
+BATCH_SIZE = int(Variable.get("BATCH_SIZE_FOR_SCRAPER"))
 STATE_FILE = "/opt/airflow/data/DTN_SYMBOLS/scraper_state.json"
 
 
@@ -44,11 +44,11 @@ def setup_chrome_driver():
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.binary_location = "/usr/bin/google-chrome"
-    
+
     service = Service()
     driver = webdriver.Chrome(service=service, options=options)
     driver.set_page_load_timeout(60)
-    
+
     return driver
 
 
@@ -85,12 +85,12 @@ def enhanced_perform_search(
             time.sleep(1)
 
         handle_checkbox_options(
-            driver, 
-            show_front_month, 
-            show_continuous, 
-            show_eminis, 
-            no_options, 
-            no_spreads
+            driver,
+            show_front_month,
+            show_continuous,
+            show_eminis,
+            no_options,
+            no_spreads,
         )
         select_html_table_format(driver)
 
@@ -110,31 +110,32 @@ def enhanced_perform_search(
             total_records = 1
         else:
             total_records = extract_record_count(driver)
-            
+
         logger.info(f"Found {total_records} total records.")
-        
+
         return total_records, True
 
     except Exception as e:
         logger.error(f"Error performing search: {e}")
         log_exception_details()
-        
+
         screenshot_path = "/opt/airflow/logs/search_error.png"
         try:
             driver.save_screenshot(screenshot_path)
             logger.info(f"Saved error screenshot to {screenshot_path}")
         except:
             pass
-            
+
         return 0, False
 
+
 def handle_checkbox_options(
-    driver, 
-    show_front_month, 
-    show_continuous, 
-    show_eminis, 
-    no_options, 
-    no_spreads
+    driver,
+    show_front_month,
+    show_continuous,
+    show_eminis,
+    no_options,
+    no_spreads,
 ):
     for option, checkbox_id in [
         (show_front_month, "frontMonthOnly"),
@@ -150,7 +151,9 @@ def handle_checkbox_options(
                     checkbox.click()
                     time.sleep(0.5)
             except Exception as e:
-                logger.warning(f"Could not interact with checkbox {checkbox_id}: {e}")
+                logger.warning(
+                    f"Could not interact with checkbox {checkbox_id}: {e}"
+                )
 
 
 def select_html_table_format(driver):
@@ -185,19 +188,28 @@ def select_html_table_format(driver):
                     )
                     logger.info("Selected HTML Table using JavaScript")
                 except Exception as js_error:
-                    logger.warning(f"JavaScript selection failed: {js_error}")
-                    
+                    logger.warning(
+                        f"JavaScript selection failed: {js_error}"
+                    )
+
                     try:
                         label = driver.find_element(
-                            By.XPATH, "//label[contains(text(), 'HTML Table')]"
+                            By.XPATH,
+                            "//label[contains(text(), 'HTML Table')]",
                         )
                         label.click()
                         logger.info("Selected HTML Table via label")
                     except Exception as label_error:
-                        logger.warning(f"Label selection failed: {label_error}")
-                        logger.info("Continuing without explicit HTML Table selection")
+                        logger.warning(
+                            f"Label selection failed: {label_error}"
+                        )
+                        logger.info(
+                            "Continuing without explicit HTML Table selection"
+                        )
     except Exception as radio_error:
-        logger.warning(f"All HTML Table selection approaches failed: {radio_error}")
+        logger.warning(
+            f"All HTML Table selection approaches failed: {radio_error}"
+        )
 
 
 def extract_record_count(driver):
@@ -217,7 +229,9 @@ def extract_record_count(driver):
 def log_exception_details():
     exc_type, exc_value, exc_traceback = sys.exc_info()
     logger.error("Exception traceback:")
-    for line in traceback.format_exception(exc_type, exc_value, exc_traceback):
+    for line in traceback.format_exception(
+        exc_type, exc_value, exc_traceback
+    ):
         logger.error(line.rstrip())
 
 
@@ -239,8 +253,8 @@ def get_variable_string(var_name, default=None):
 def save_state(state_data):
     try:
         os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
-        
-        with open(STATE_FILE, 'w') as f:
+
+        with open(STATE_FILE, "w") as f:
             json.dump(state_data, f)
         logger.info(f"State saved to {STATE_FILE}")
         return True
@@ -252,7 +266,7 @@ def save_state(state_data):
 def load_state():
     try:
         if os.path.exists(STATE_FILE):
-            with open(STATE_FILE, 'r') as f:
+            with open(STATE_FILE, "r") as f:
                 state = json.load(f)
             logger.info(f"Loaded state: {state}")
             return state
@@ -263,7 +277,7 @@ def load_state():
                 "total_records": 0,
                 "processed_records": 0,
                 "batch_number": 1,
-                "complete": False
+                "complete": False,
             }
     except Exception as e:
         logger.error(f"Failed to load state: {e}")
@@ -272,7 +286,7 @@ def load_state():
             "total_records": 0,
             "processed_records": 0,
             "batch_number": 1,
-            "complete": False
+            "complete": False,
         }
 
 
@@ -280,31 +294,31 @@ def go_to_specific_page(driver, page_number):
     try:
         if page_number == 1:
             return True
-        
+
         logger.info(f"Attempting to navigate to page {page_number}")
-        
+
         try:
             page_input = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.ID, "pageNumberInput"))
             )
             page_input.clear()
             page_input.send_keys(str(page_number))
-            
+
             go_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.ID, "goButton"))
             )
             go_button.click()
-            
+
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.ID, "symbolTable"))
             )
             time.sleep(3)
-            
+
             logger.info(f"Successfully navigated to page {page_number}")
             return True
         except Exception as e:
             logger.warning(f"Direct page navigation failed: {e}")
-            
+
             current_page = 1
             while current_page < page_number:
                 next_button = WebDriverWait(driver, 5).until(
@@ -313,17 +327,21 @@ def go_to_specific_page(driver, page_number):
                 if next_button.is_enabled() and next_button.is_displayed():
                     next_button.click()
                     WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "symbolTable"))
+                        EC.presence_of_element_located(
+                            (By.ID, "symbolTable")
+                        )
                     )
                     time.sleep(2)
                     current_page += 1
-                    logger.info(f"Sequential navigation: Now on page {current_page}")
+                    logger.info(
+                        f"Sequential navigation: Now on page {current_page}"
+                    )
                 else:
                     logger.error("Next button not available")
                     return False
-            
+
             return current_page == page_number
-            
+
     except Exception as e:
         logger.error(f"Failed to navigate to page {page_number}: {e}")
         return False
@@ -332,18 +350,20 @@ def go_to_specific_page(driver, page_number):
 def extract_page_data(driver, only_first_row=False):
     try:
         time.sleep(3)
-        rows = driver.find_element(By.ID, "symbolTable").find_elements(By.CSS_SELECTOR, "tbody tr")
+        rows = driver.find_element(By.ID, "symbolTable").find_elements(
+            By.CSS_SELECTOR, "tbody tr"
+        )
         if not rows:
             logger.warning("No rows found on current page")
             return []
-            
+
         page_data = []
         row_limit = 1 if only_first_row else len(rows)
-        
+
         for i in range(row_limit):
-            if i >= len(rows): 
+            if i >= len(rows):
                 break
-                
+
             row = rows[i]
             cells = row.find_elements(By.TAG_NAME, "td")
             if len(cells) >= 5:
@@ -356,32 +376,39 @@ def extract_page_data(driver, only_first_row=False):
                     "created_at": datetime.now(),
                 }
                 page_data.append(record)
-                
+
                 if only_first_row:
-                    logger.info(f"Taking only first row: {record['symbol']}")
-        
+                    logger.info(
+                        f"Taking only first row: {record['symbol']}"
+                    )
+
         if only_first_row:
             logger.info(f"Extracted only first record from current page")
         else:
-            logger.info(f"Extracted {len(page_data)} records from current page")
-            
+            logger.info(
+                f"Extracted {len(page_data)} records from current page"
+            )
+
         return page_data
     except Exception as e:
         logger.error(f"Failed to extract page data: {e}")
         return []
 
+
 def save_batch_to_parquet(data, output_file, batch_num, first_batch=False):
     try:
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        
+
         df = pl.DataFrame(data)
-        
+
         if first_batch or not os.path.exists(output_file):
             atomic_update = AtomicFileUpdate(
                 output_file, f"{output_file}.tmp"
             )
             atomic_update.perform_atomic_update(df)
-            logger.info(f"Created new parquet file with {len(data)} records")
+            logger.info(
+                f"Created new parquet file with {len(data)} records"
+            )
         else:
             existing_df = pl.read_parquet(output_file)
             combined_df = pl.concat([existing_df, df])
@@ -389,19 +416,28 @@ def save_batch_to_parquet(data, output_file, batch_num, first_batch=False):
                 output_file, f"{output_file}.tmp"
             )
             atomic_update.perform_atomic_update(combined_df)
-            logger.info(f"Appended {len(data)} records to existing parquet file")
-            
+            logger.info(
+                f"Appended {len(data)} records to existing parquet file"
+            )
+
         backup_file = output_file.replace(".parquet", f"_backup.parquet")
-        
+
         if first_batch or not os.path.exists(backup_file):
-            df.write_parquet(backup_file)
+            atomic_update = AtomicFileUpdate(
+                backup_file, f"{backup_file}.tmp"
+            )
+            atomic_update.perform_atomic_update(df)
+
         else:
             backup_df = pl.read_parquet(backup_file)
             combined_backup_df = pl.concat([backup_df, df])
-            combined_backup_df.write_parquet(backup_file)
-            
+            atomic_update = AtomicFileUpdate(
+                backup_file, f"{backup_file}.tmp"
+            )
+            atomic_update.perform_atomic_update(combined_backup_df)
+
         logger.info(f"Updated backup file with batch {batch_num} data")
-        
+
         return True
     except Exception as e:
         logger.error(f"Failed to save batch to parquet: {e}")
@@ -413,34 +449,42 @@ async def save_batch_to_db(data, db_manager):
         if not data:
             logger.info("No data to save to database")
             return True
-            
-        if not hasattr(db_manager, 'metadata_manager'):
+
+        if not hasattr(db_manager, "metadata_manager"):
             from src.pipelines.extras.metadata import MetadataManager
+
             db_manager.metadata_manager = MetadataManager()
             logger.info("Initialized MetadataManager")
 
-        existing_symbols_raw = await db_manager.db.get_unique_column("symbol")
-        existing_symbols = set(
-            s.symbol if hasattr(s, "symbol") else s for s in existing_symbols_raw
+        existing_symbols_raw = await db_manager.db.get_unique_column(
+            "symbol"
         )
-        
+        existing_symbols = set(
+            s.symbol if hasattr(s, "symbol") else s
+            for s in existing_symbols_raw
+        )
+
         new_records = []
         for record in data:
             symbol = record["symbol"]
             if symbol not in existing_symbols:
                 new_records.append(record)
-                existing_symbols.add(symbol) 
-        
+                existing_symbols.add(symbol)
+
         if not new_records:
             logger.info("No new symbols to insert in this batch")
             return True
-            
+
         await db_manager.db.bulk_insert(new_records)
-        logger.info(f"Inserted {len(new_records)} new records into the database")
-        
-        await db_manager.metadata_manager.save_symbols_metadata(new_records)
+        logger.info(
+            f"Inserted {len(new_records)} new records into the database"
+        )
+
+        await db_manager.metadata_manager.save_symbols_metadata(
+            new_records
+        )
         logger.info(f"Updated metadata for {len(new_records)} symbols")
-        
+
         return True
     except Exception as e:
         logger.error(f"Failed to save batch to database: {e}")
@@ -452,7 +496,7 @@ def navigate_to_next_page(driver):
         next_button = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.ID, "nextButtonTop"))
         )
-        
+
         if next_button.is_enabled() and next_button.is_displayed():
             next_button.click()
             WebDriverWait(driver, 10).until(
@@ -462,7 +506,9 @@ def navigate_to_next_page(driver):
             logger.info("Successfully navigated to next page")
             return True
         else:
-            logger.info("Next button not enabled, likely reached the end of results")
+            logger.info(
+                "Next button not enabled, likely reached the end of results"
+            )
             return False
     except Exception as e:
         logger.error(f"Failed to navigate to next page: {e}")
@@ -476,119 +522,173 @@ async def process_batch(
     output_file,
     model_file_pattern,
     search_params,
-    only_first_row=False  # Add this parameter
+    only_first_row=False,  # Add this parameter
 ):
     try:
         batch_data = []
         current_page = state["current_page"]
         first_page_in_batch = current_page
         records_in_batch = 0
-        batch_size = min(BATCH_SIZE, state["total_records"] - state["processed_records"])
-        
-        logger.info(f"Starting batch {state['batch_number']} from page {current_page}")
+        batch_size = min(
+            BATCH_SIZE, state["total_records"] - state["processed_records"]
+        )
+
+        logger.info(
+            f"Starting batch {state['batch_number']} from page {current_page}"
+        )
         logger.info(f"Target batch size: {batch_size} records")
-        
+
         if current_page > 1:
             success = go_to_specific_page(driver, current_page)
             if not success:
-                logger.error(f"Failed to navigate to starting page {current_page}")
+                logger.error(
+                    f"Failed to navigate to starting page {current_page}"
+                )
                 return False
-        
+
         while records_in_batch < batch_size:
             # Pass the only_first_row parameter to extract_page_data
-            page_data = extract_page_data(driver, only_first_row=only_first_row)
+            page_data = extract_page_data(
+                driver, only_first_row=only_first_row
+            )
             if not page_data:
-                logger.warning(f"No data found on page {current_page}, may have reached the end")
+                logger.warning(
+                    f"No data found on page {current_page}, may have reached the end"
+                )
                 if state["processed_records"] >= state["total_records"]:
                     state["complete"] = True
-                    logger.info(f"All records processed ({state['processed_records']}/{state['total_records']}). Marking as complete.")
+                    logger.info(
+                        f"All records processed ({state['processed_records']}/{state['total_records']}). Marking as complete."
+                    )
                 else:
-                    logger.error(f"No data found but only processed {state['processed_records']}/{state['total_records']} records.")
+                    logger.error(
+                        f"No data found but only processed {state['processed_records']}/{state['total_records']} records."
+                    )
                     state["complete"] = False
                 break
-                
+
             batch_data.extend(page_data)
             records_in_batch += len(page_data)
             state["processed_records"] += len(page_data)
-            
-            logger.info(f"Added {len(page_data)} records from page {current_page}")
-            logger.info(f"Batch progress: {records_in_batch}/{batch_size} records")
-            logger.info(f"Total progress: {state['processed_records']}/{state['total_records']} records")
-            
+
+            logger.info(
+                f"Added {len(page_data)} records from page {current_page}"
+            )
+            logger.info(
+                f"Batch progress: {records_in_batch}/{batch_size} records"
+            )
+            logger.info(
+                f"Total progress: {state['processed_records']}/{state['total_records']} records"
+            )
+
             state["current_page"] = current_page
             save_state(state)
-            
+
             # If only taking first row, mark as complete after processing it
             if only_first_row:
-                logger.info("Only first row requested - marking as complete")
+                logger.info(
+                    "Only first row requested - marking as complete"
+                )
                 state["complete"] = True
                 break
-                
+
             if state["processed_records"] >= state["total_records"]:
-                logger.info("Reached total record count, marking as complete")
+                logger.info(
+                    "Reached total record count, marking as complete"
+                )
                 state["complete"] = True
                 break
-                
+
             if records_in_batch < batch_size:
                 success = navigate_to_next_page(driver)
                 if not success:
-                    logger.warning("Could not navigate to next page, may have reached the end")
-                    if state["processed_records"] >= state["total_records"]:
+                    logger.warning(
+                        "Could not navigate to next page, may have reached the end"
+                    )
+                    if (
+                        state["processed_records"]
+                        >= state["total_records"]
+                    ):
                         state["complete"] = True
-                        logger.info(f"Navigation ended after processing all {state['processed_records']} records. Marking as complete.")
+                        logger.info(
+                            f"Navigation ended after processing all {state['processed_records']} records. Marking as complete."
+                        )
                     else:
-                        logger.error(f"Navigation ended but only processed {state['processed_records']}/{state['total_records']} records.")
+                        logger.error(
+                            f"Navigation ended but only processed {state['processed_records']}/{state['total_records']} records."
+                        )
                         state["complete"] = False
                     break
                 current_page += 1
                 state["current_page"] = current_page
-        
-        first_batch = state["batch_number"] == 1 and first_page_in_batch == 1
+
+        first_batch = (
+            state["batch_number"] == 1 and first_page_in_batch == 1
+        )
         if batch_data:
-            actual_output_file = determine_output_file(model_file_pattern, search_params)
-            
-            save_batch_to_parquet(batch_data, actual_output_file, state["batch_number"], first_batch)
+            actual_output_file = determine_output_file(
+                model_file_pattern, search_params
+            )
+
+            save_batch_to_parquet(
+                batch_data,
+                actual_output_file,
+                state["batch_number"],
+                first_batch,
+            )
             await save_batch_to_db(batch_data, db_manager)
-            
+
             state["batch_number"] += 1
             state["current_page"] = current_page
             save_state(state)
-            
-            logger.info(f"Completed batch {state['batch_number']-1} with {len(batch_data)} records")
+
+            logger.info(
+                f"Completed batch {state['batch_number']-1} with {len(batch_data)} records"
+            )
             return True
         else:
             logger.warning("No data collected in this batch")
             if state["processed_records"] >= state["total_records"]:
                 state["complete"] = True
-                logger.info("No data in this batch, but all records have been processed. Marking as complete.")
+                logger.info(
+                    "No data in this batch, but all records have been processed. Marking as complete."
+                )
             else:
                 state["complete"] = False
-                logger.warning(f"No data in this batch and only processed {state['processed_records']}/{state['total_records']} records.")
+                logger.warning(
+                    f"No data in this batch and only processed {state['processed_records']}/{state['total_records']} records."
+                )
             save_state(state)
             return False
-            
+
     except Exception as e:
         logger.error(f"Error processing batch: {e}")
         log_exception_details()
         return False
 
+
 def determine_output_file(base_pattern, search_params):
     output_file = base_pattern
-    
+
     if search_params.get("show_front_month"):
-        output_file = output_file.replace(".parquet", "_frontmonth.parquet")
+        output_file = output_file.replace(
+            ".parquet", "_frontmonth.parquet"
+        )
     elif search_params.get("show_continuous"):
-        output_file = output_file.replace(".parquet", "_continuous.parquet")
+        output_file = output_file.replace(
+            ".parquet", "_continuous.parquet"
+        )
     elif search_params.get("show_eminis"):
         output_file = output_file.replace(".parquet", "_eminis.parquet")
     elif search_params.get("no_options"):
         output_file = output_file.replace(".parquet", "_nooptions.parquet")
     elif search_params.get("no_spreads"):
         output_file = output_file.replace(".parquet", "_nospreads.parquet")
-    
+
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    
+
     return output_file
+
 
 def apply_search_text_filter(driver, search_text):
     try:
@@ -615,28 +715,24 @@ def load_search_texts_from_csv(csv_path):
         logger.error(f"Failed to read search texts from CSV: {e}")
         return []
 
+
 async def run_batch_extraction(
-    scraper,
-    driver,
-    search_params,
-    output_file
+    scraper, driver, search_params, output_file
 ):
-    # Load symbols from CSV if path is provided or via ENV var
-    csv_path = search_params.get("search_texts_csv") or get_variable_string("SEARCH_TEXTS_CSV_PATH")
+    csv_path = search_params.get(
+        "search_texts_csv"
+    ) or get_variable_string("SEARCH_TEXTS_CSV_PATH")
     search_texts = load_search_texts_from_csv(csv_path) if csv_path else []
 
     if not search_texts:
         return await run_batch_extraction_single(
-            scraper,
-            driver,
-            search_params,
-            output_file
+            scraper, driver, search_params, output_file
         )
 
     all_dataframes = []
     for text in search_texts:
         logger.info(f"\n--- Starting search for text: '{text}' ---")
-        scraper.symbols_data.clear()
+        scraper.symbols_data = []
 
         scraper.select_model_and_filename(
             search_params.get("show_front_month", False),
@@ -650,10 +746,11 @@ async def run_batch_extraction(
         time.sleep(5)
 
         if not apply_search_text_filter(driver, text):
-            logger.warning(f"Skipping search text '{text}' due to input failure")
+            logger.warning(
+                f"Skipping search text '{text}' due to input failure"
+            )
             continue
 
-        # Pass the search text to enhanced_perform_search to indicate we want only first row
         total_records, success = enhanced_perform_search(
             driver,
             exchange=search_params.get("exchange"),
@@ -663,20 +760,25 @@ async def run_batch_extraction(
             show_eminis=search_params.get("show_eminis", False),
             no_options=search_params.get("no_options", False),
             no_spreads=search_params.get("no_spreads", False),
-            search_text=text  # Pass the search text parameter
+            search_text=text,
         )
 
         if not success:
             continue
 
         state = load_state()
-        state.update({"current_page": 1, "processed_records": 0, "total_records": total_records, "batch_number": 1, "complete": False})
+        state.update(
+            {
+                "current_page": 1,
+                "processed_records": 0,
+                "total_records": total_records,
+                "batch_number": 1,
+                "complete": False,
+            }
+        )
         save_state(state)
 
-        # Modify the process_batch call to handle search text scenario
-        # We'll need to update the process_batch function as well
         while not state.get("complete", False):
-            # Pass a parameter to indicate we're using search text
             success = await process_batch(
                 state,
                 driver,
@@ -684,35 +786,66 @@ async def run_batch_extraction(
                 output_file,
                 output_file,
                 search_params,
-                only_first_row=True  # New parameter indicating we want only first row
+                only_first_row=True,
             )
             if not success:
                 break
 
         if scraper.symbols_data:
             df = pl.DataFrame(scraper.symbols_data)
-            if text in df['symbol'].to_list():
+            if text in df["symbol"].to_list():
                 df = df.filter(pl.col("symbol") == text)
+                all_dataframes.append(df)
+                logger.info(
+                    f"Added match for '{text}' to combined dataframe"
+                )
             else:
-                logger.warning(f"Exact match for '{text}' not found in scraped data. Skipping.")
-                continue
-            all_dataframes.append(df)
-        logger.info(f"Completed search for text: '{text}' with {len(scraper.symbols_data)} records")
+                logger.warning(
+                    f"Exact match for '{text}' not found in scraped data"
+                )
+
+        logger.info(f"Completed search for text: '{text}'")
 
     if all_dataframes:
         final_df = pl.concat(all_dataframes)
-        logger.info(f"Saving combined DataFrame of {len(final_df)} records from all search texts")
-        final_df.write_parquet(output_file)
+        logger.info(
+            f"Saving combined DataFrame with {len(final_df)} records from all search texts to {output_file}"
+        )
+
+        if os.path.exists(output_file):
+            existing_df = pl.read_parquet(output_file)
+            existing_symbols = set(existing_df["symbol"].to_list())
+            new_records = final_df.filter(
+                ~pl.col("symbol").is_in(existing_symbols)
+            )
+
+            if len(new_records) > 0:
+                combined_df = pl.concat([existing_df, new_records])
+                logger.info(
+                    f"Appending {len(new_records)} new records to existing file with {len(existing_df)} records"
+                )
+                atomic_update = AtomicFileUpdate(
+                    output_file, f"{output_file}.tmp"
+                )
+                atomic_update.perform_atomic_update(combined_df)
+            else:
+                logger.info("No new records to append to existing file")
+        else:
+            atomic_update = AtomicFileUpdate(
+                output_file, f"{output_file}.tmp"
+            )
+            atomic_update.perform_atomic_update(final_df)
+            logger.info(
+                f"Created new parquet file with {len(final_df)} records"
+            )
     else:
         logger.warning("No data collected from any search text")
+
     return True
 
 
 async def run_batch_extraction_single(
-    scraper,
-    driver,
-    search_params,
-    output_file
+    scraper, driver, search_params, output_file
 ):
     scraper.select_model_and_filename(
         search_params.get("show_front_month", False),
@@ -734,7 +867,7 @@ async def run_batch_extraction_single(
             show_eminis=search_params.get("show_eminis", False),
             no_options=search_params.get("no_options", False),
             no_spreads=search_params.get("no_spreads", False),
-            search_text=None  # No search text in this path
+            search_text=None,  # No search text in this path
         )
 
         if not success:
@@ -743,7 +876,9 @@ async def run_batch_extraction_single(
         state["total_records"] = total_records
         save_state(state)
     else:
-        logger.info(f"Resuming from previous state: page {state['current_page']}, {state['processed_records']}/{state['total_records']} records processed")
+        logger.info(
+            f"Resuming from previous state: page {state['current_page']}, {state['processed_records']}/{state['total_records']} records processed"
+        )
         _, success = enhanced_perform_search(
             driver,
             exchange=search_params.get("exchange"),
@@ -753,7 +888,7 @@ async def run_batch_extraction_single(
             show_eminis=search_params.get("show_eminis", False),
             no_options=search_params.get("no_options", False),
             no_spreads=search_params.get("no_spreads", False),
-            search_text=None  # No search text in this path
+            search_text=None,  # No search text in this path
         )
         if not success:
             raise Exception("Failed to resume search")
@@ -766,7 +901,7 @@ async def run_batch_extraction_single(
             output_file,
             output_file,
             search_params,
-            only_first_row=False  # Not restricting to first row in this path
+            only_first_row=False,  # Not restricting to first row in this path
         )
 
         if not success:
@@ -774,71 +909,82 @@ async def run_batch_extraction_single(
 
     if state["processed_records"] >= state["total_records"]:
         state["complete"] = True
-        logger.info(f"Extraction complete: {state['processed_records']} records")
+        logger.info(
+            f"Extraction complete: {state['processed_records']} records"
+        )
     else:
-        logger.warning(f"Extraction incomplete: {state['processed_records']} out of {state['total_records']}")
+        logger.warning(
+            f"Extraction incomplete: {state['processed_records']} out of {state['total_records']}"
+        )
 
     save_state(state)
     return state["processed_records"]
 
+
 def run_scraper(**kwargs):
     from src.pipelines.iqsymbols import DTNIQFeed
-    
+
     setup_display()
-    
+
     output_file = "/opt/airflow/data/DTN_SYMBOLS/dtn_symbols.parquet"
     scraper = DTNIQFeed(output_file=output_file)
-    
+
     try:
         driver = setup_chrome_driver()
         scraper.driver = driver
         scraper.driver.get(scraper.url)
         time.sleep(20)
-        
+
         search_params = {
-            "exchange": get_variable_string('EXCHANGE'),
-            "security_type": get_variable_string('SECURITY_TYPE'),
-            "show_front_month": get_variable_boolean('SHOW_FRONT_MONTH'),
-            "show_continuous": get_variable_boolean('SHOW_CONTINUOUS'),
-            "show_eminis": get_variable_boolean('SHOW_EMINIS'),
-            "no_options": get_variable_boolean('NO_OPTIONS'),
-            "no_spreads": get_variable_boolean('NO_SPREADS'),
+            "exchange": get_variable_string("EXCHANGE"),
+            "security_type": get_variable_string("SECURITY_TYPE"),
+            "show_front_month": get_variable_boolean("SHOW_FRONT_MONTH"),
+            "show_continuous": get_variable_boolean("SHOW_CONTINUOUS"),
+            "show_eminis": get_variable_boolean("SHOW_EMINIS"),
+            "no_options": get_variable_boolean("NO_OPTIONS"),
+            "no_spreads": get_variable_boolean("NO_SPREADS"),
         }
-        
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
             total_processed = loop.run_until_complete(
                 run_batch_extraction(
-                    scraper,
-                    driver,
-                    search_params,
-                    output_file
+                    scraper, driver, search_params, output_file
                 )
             )
-            
+
             completion_status = load_state()
             total_records = completion_status.get("total_records", 0)
-            
-            if completion_status.get("complete", False) and total_processed >= total_records:
+
+            if (
+                completion_status.get("complete", False)
+                and total_processed >= total_records
+            ):
                 return f"DTN symbol scraping completed successfully. Processed {total_processed} out of {total_records} records."
             else:
-                percentage = (total_processed / total_records * 100) if total_records > 0 else 0
+                percentage = (
+                    (total_processed / total_records * 100)
+                    if total_records > 0
+                    else 0
+                )
                 return f"DTN symbol scraping incomplete. Processed {total_processed} out of {total_records} records ({percentage:.2f}%)."
         finally:
             loop.close()
-    
+
     except Exception as e:
         logger.error(f"DTN symbol scraping failed: {str(e)}")
-        
+
         if hasattr(scraper, "driver") and scraper.driver:
             screenshot_path = "/opt/airflow/logs/final_error.png"
             try:
                 scraper.driver.save_screenshot(screenshot_path)
-                logger.info(f"Saved final error screenshot to {screenshot_path}")
+                logger.info(
+                    f"Saved final error screenshot to {screenshot_path}"
+                )
             except:
                 pass
-        
+
         raise Exception(f"DTN symbol scraping failed: {str(e)}")
     finally:
         if hasattr(scraper, "driver") and scraper.driver:
@@ -857,26 +1003,38 @@ def scrape_dtn_symbols(**kwargs):
         log_exception_details()
         raise Exception(f"Setup failed: {str(outer_e)}")
 
+
 def reset_scraper_state(**kwargs):
     try:
         if os.path.exists(STATE_FILE):
-            with open(STATE_FILE, 'r') as f:
+            with open(STATE_FILE, "r") as f:
                 state = json.load(f)
-            
+
             total_records = state.get("total_records", 0)
             processed_records = state.get("processed_records", 0)
-            
-            if state.get("complete", False) and processed_records >= total_records:
+
+            if (
+                state.get("complete", False)
+                and processed_records >= total_records
+            ):
                 os.remove(STATE_FILE)
-                logger.info(f"Scraping completed successfully. All {processed_records} records processed. State file removed.")
+                logger.info(
+                    f"Scraping completed successfully. All {processed_records} records processed. State file removed."
+                )
                 return "Scraper state file removed - all records processed successfully"
             else:
                 remaining = total_records - processed_records
-                progress_pct = (processed_records / total_records * 100) if total_records > 0 else 0
-                
-                logger.info(f"Scraping incomplete. State file preserved for resumption. "
-                          f"Progress: {processed_records}/{total_records} records ({progress_pct:.2f}%). "
-                          f"Remaining: {remaining} records.")
+                progress_pct = (
+                    (processed_records / total_records * 100)
+                    if total_records > 0
+                    else 0
+                )
+
+                logger.info(
+                    f"Scraping incomplete. State file preserved for resumption. "
+                    f"Progress: {processed_records}/{total_records} records ({progress_pct:.2f}%). "
+                    f"Remaining: {remaining} records."
+                )
                 return f"Scraping incomplete ({progress_pct:.2f}%). State file preserved for resumption."
         else:
             return "No state file found. Nothing to remove."
@@ -885,31 +1043,38 @@ def reset_scraper_state(**kwargs):
         log_exception_details()
         return f"Failed to process state file: {e}"
 
+
 def inspect_state_file(**kwargs):
     try:
         if os.path.exists(STATE_FILE):
-            with open(STATE_FILE, 'r') as f:
+            with open(STATE_FILE, "r") as f:
                 state = json.load(f)
-            
+
             total_records = state.get("total_records", 0)
             processed_records = state.get("processed_records", 0)
             current_page = state.get("current_page", 1)
             complete_status = state.get("complete", False)
             batch_num = state.get("batch_number", 1)
-            
-            progress_pct = (processed_records / total_records * 100) if total_records > 0 else 0
+
+            progress_pct = (
+                (processed_records / total_records * 100)
+                if total_records > 0
+                else 0
+            )
             remaining = total_records - processed_records
-            
-            report = (f"STATE FILE DIAGNOSTIC REPORT:\n"
-                     f"Complete flag: {complete_status}\n"
-                     f"Total records: {total_records}\n"
-                     f"Processed records: {processed_records}\n"
-                     f"Remaining records: {remaining}\n"
-                     f"Progress: {progress_pct:.2f}%\n"
-                     f"Current page: {current_page}\n"
-                     f"Batch number: {batch_num}\n"
-                     f"Full state: {state}")
-            
+
+            report = (
+                f"STATE FILE DIAGNOSTIC REPORT:\n"
+                f"Complete flag: {complete_status}\n"
+                f"Total records: {total_records}\n"
+                f"Processed records: {processed_records}\n"
+                f"Remaining records: {remaining}\n"
+                f"Progress: {progress_pct:.2f}%\n"
+                f"Current page: {current_page}\n"
+                f"Batch number: {batch_num}\n"
+                f"Full state: {state}"
+            )
+
             logger.info(report)
             return report
         else:

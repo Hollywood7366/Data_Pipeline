@@ -19,5 +19,5 @@ __all__ = [
     "SymbolMetadata",
     "IQFeedDataMeta",
     "History",
-    "TickerExtraction"
+    "TickerExtraction",
 ]

@@ -1,11 +1,12 @@
 import asyncio
-from datetime import datetime, timedelta
 import os
+from datetime import datetime, timedelta
 
 import polars as pl
 from airflow import DAG
-from airflow.operators.python import PythonOperator
 from airflow.models import Variable
+from airflow.operators.python import PythonOperator
+from dotenv import load_dotenv
 
 from src.models import *
 from src.pipelines.extras.base import BaseDB
@@ -21,8 +22,8 @@ from utils.CONSTANTS import (
 )
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
-from dotenv import load_dotenv
-load_dotenv(dotenv_path="/opt/airflow/.env") 
+
+load_dotenv(dotenv_path="/opt/airflow/.env")
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
 
@@ -35,7 +36,7 @@ default_args = {
     "email": "sarimsikander24@gmail.com",
     "on_failure_callback": send_dag_failure_email,
     "on_success_callback": send_dag_success_email,
-    "retries": 3,  
+    "retries": 3,
     "retry_delay": timedelta(minutes=10),
 }
 
@@ -46,14 +47,19 @@ dag = DAG(
     schedule_interval="0 */3 * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=["iqfeed", "google_sheets", "parquet",f"pipeline_version:{os.getenv('PIPELINE_VERSION','v1_2')}"],
+    tags=[
+        "iqfeed",
+        "google_sheets",
+        "parquet",
+        f"pipeline_version:{os.getenv('PIPELINE_VERSION','v1_2')}",
+    ],
 )
 
 
 async def fetch_symbols_from_sheet():
     sheet_sync = GoogleSheetSync(
         credentials_path=CREDENTIALS_PATH,
-        spreadsheet_key=Variable.get('SPREADSHEET_KEY'),
+        spreadsheet_key=Variable.get("SPREADSHEET_KEY"),
         worksheet_name=0,
         filename="selectedsymbols.parquet",
         data_folder="data/GOOGLE_TO_LOCAL",

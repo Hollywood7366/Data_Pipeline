@@ -1,25 +1,30 @@
-from datetime import datetime, timedelta
-import os
 import json
+import os
+from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.python import ShortCircuitOperator
+from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from dotenv import load_dotenv
 
-from src.pipelines.iqfeedscrape_refactored import STATE_FILE, inspect_state_file, reset_scraper_state, scrape_dtn_symbols
-
+from src.pipelines.iqfeedscrape_refactored import (
+    STATE_FILE,
+    inspect_state_file,
+    reset_scraper_state,
+    scrape_dtn_symbols,
+)
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
-from dotenv import load_dotenv
-load_dotenv(dotenv_path="/opt/airflow/.env") 
+
+load_dotenv(dotenv_path="/opt/airflow/.env")
 
 logger = Logger(name="dtn_iqfeed_scraper", log_dir="/opt/airflow/logs")
+
 
 def should_continue(**kwargs):
     try:
         if os.path.exists(STATE_FILE):
-            with open(STATE_FILE, 'r') as f:
+            with open(STATE_FILE, "r") as f:
                 state = json.load(f)
             return not state.get("complete", False)
         return False
@@ -37,7 +42,7 @@ default_args = {
     "email": "sarimsikander24@gmail.com",
     "on_failure_callback": send_dag_failure_email,
     "on_success_callback": send_dag_success_email,
-    "retries": 3,  
+    "retries": 3,
     "retry_delay": timedelta(minutes=10),
 }
 
@@ -48,7 +53,14 @@ with DAG(
     schedule_interval="0 1 * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=["scraping", "dtn", "iqfeed", "symbols", "batch",f"pipeline_version:{os.getenv('PIPELINE_VERSION','v1_2')}"],
+    tags=[
+        "scraping",
+        "dtn",
+        "iqfeed",
+        "symbols",
+        "batch",
+        f"pipeline_version:{os.getenv('PIPELINE_VERSION','v1_2')}",
+    ],
 ) as dag:
 
     scrape_task = PythonOperator(
@@ -56,14 +68,14 @@ with DAG(
         python_callable=scrape_dtn_symbols,
         provide_context=True,
     )
-    
+
     reset_state_task = PythonOperator(
         task_id="reset_scraper_state",
         python_callable=reset_scraper_state,
         provide_context=True,
-        trigger_rule="all_done", 
+        trigger_rule="all_done",
     )
-    
+
     inspect_state_task = PythonOperator(
         task_id="inspect_state_file",
         python_callable=inspect_state_file,
@@ -84,5 +96,11 @@ with DAG(
         reset_dag_run=False,
         trigger_rule="all_done",
     )
-    
-    scrape_task >> inspect_state_task >> reset_state_task >> check_complete_task >> trigger_self_task
+
+    (
+        scrape_task
+        >> inspect_state_task
+        >> reset_state_task
+        >> check_complete_task
+        >> trigger_self_task
+    )

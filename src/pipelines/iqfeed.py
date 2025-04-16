@@ -2,11 +2,11 @@ from datetime import datetime, timedelta
 from typing import List
 
 from src.models.ticker_history import TickerExtraction
-from src.pipelines.extras.extraction_manager import ExtractionManager
 from src.pipelines.extras.asyncer import (
     get_async_logs_script,
     run_async_task,
 )
+from src.pipelines.extras.extraction_manager import ExtractionManager
 from utils.iqfeed_utils import (
     clean_data,
     close_socket,
@@ -33,11 +33,11 @@ def historical(
 ):
     all_data = {}
     successful_tickers = []
-    
+
     extraction_manager = ExtractionManager()
     if not end_date:
         yesterday = datetime.now() - timedelta(days=1)
-        end_date = yesterday.strftime("%Y%m%d")    
+        end_date = yesterday.strftime("%Y%m%d")
 
     try:
         sock = connect_to_socket(host, port)
@@ -45,7 +45,7 @@ def historical(
 
         start_dt = datetime.strptime(start_date, "%Y%m%d")
         end_dt = datetime.strptime(end_date, "%Y%m%d")
-    
+
         yesterday_dt = datetime.now() - timedelta(days=1)
         if end_dt > yesterday_dt:
             end_dt = yesterday_dt
@@ -54,8 +54,12 @@ def historical(
 
         for sym in tickers:
             logger.info(f"Downloading data for: {sym}")
-            if not extraction_manager.should_process_ticker(sym, start_dt, end_dt, interval):
-                logger.info(f"Skipping {sym} - already processed for this date range")
+            if not extraction_manager.should_process_ticker(
+                sym, start_dt, end_dt, interval
+            ):
+                logger.info(
+                    f"Skipping {sym} - already processed for this date range"
+                )
                 successful_tickers.append(sym)
                 continue
 
@@ -82,7 +86,7 @@ def historical(
                         end_date=end_dt,
                         interval=interval,
                         successful=True,
-                        record_count=record_count
+                        record_count=record_count,
                     )
                 )
                 all_data[sym] = data
@@ -96,7 +100,7 @@ def historical(
                         end_date=end_dt,
                         interval=interval,
                         successful=False,
-                        record_count=0
+                        record_count=0,
                     )
                 )
 

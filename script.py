@@ -1,7 +1,7 @@
 import asyncio
 
-from src.pipelines.iqsymbols import DTNIQFeed
 from src.config.config import config as cn
+from src.pipelines.iqsymbols import DTNIQFeed
 
 if __name__ == "__main__":
     scraper = DTNIQFeed(

@@ -197,7 +197,8 @@ class GoogleSheetSync:
             time.sleep(self.update_interval)
             if self.running:
                 self.update_dataframe()
-                
+
+
 # if __name__ == "__main__":
 #     CREDENTIALS_FILE = "api.json"
 #     SPREADSHEET_KEY = "143mImeD54tx0q-yXBmmyXkN-hI8JwpA_0-IJSs8_Lrk"

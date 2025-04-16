@@ -19,6 +19,7 @@ from src.models import (
 )
 from src.pipelines.extras.base import BaseDB
 from src.pipelines.extras.metadata import MetadataManager
+from utils.atomic_creator import AtomicFileUpdate
 from utils.logging import Logger
 from utils.util import base_path
 
@@ -225,7 +226,11 @@ class DTNIQFeed:
             logger.info("No data to save")
             return
         try:
-            pl.DataFrame(self.symbols_data).write_parquet(self.output_file)
+            df = pl.DataFrame(self.symbols_data)
+            atomic_update = AtomicFileUpdate(
+                self.output_file, f"{self.output_file}.tmp"
+            )
+            atomic_update.perform_atomic_update(df)
             logger.info(
                 f"Successfully saved {len(self.symbols_data)} records to {self.output_file}"
             )
@@ -269,7 +274,11 @@ class DTNIQFeed:
             )
             await self.metadata_manager.save_symbols_metadata(new_records)
 
-            pl.DataFrame(new_records).write_parquet(self.output_file)
+            df_ = pl.DataFrame(new_records)
+            atomic_update = AtomicFileUpdate(
+                self.output_file, f"{self.output_file}.tmp"
+            )
+            atomic_update.perform_atomic_update(df_)
             logger.info(
                 f"Saved {len(new_records)} new records to Parquet at {self.output_file}"
             )
