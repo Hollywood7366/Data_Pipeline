@@ -1,4 +1,5 @@
 import socket
+from pathlib import Path
 
 import polars as pl
 
@@ -9,7 +10,7 @@ from src.pipelines.extras.asyncer import (
 from src.pipelines.transformations.misc import ParquetDatabaseHandler
 from utils.CONSTANTS import STORAGE_DIR
 from utils.logging import Logger
-from utils.util import base_path, clean_data
+from utils.util import clean_data
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
 
@@ -79,7 +80,37 @@ def data_to_parquet(data: str, sym: str, interval: str, records) -> None:
 
     try:
         df = _create_dataframe(formatted_rows)
-        _save_data_and_metadata(df, sym, exchange, security_type, interval)
+        parquet_handler = ParquetDatabaseHandler(base_path=STORAGE_DIR)
+
+        file_path = (
+            Path(STORAGE_DIR)
+            / exchange
+            / security_type
+            / interval
+            / f"{sym}.parquet"
+        )
+
+        if file_path.exists():
+            file_path = parquet_handler.append_data(
+                exchange=exchange,
+                security_type=security_type,
+                timeframe=interval,
+                symbol=sym,
+                new_data=df,
+            )
+            logger.info(f"Appended data to existing file: {file_path}")
+        else:
+            file_path = parquet_handler.save_data(
+                exchange=exchange,
+                security_type=security_type,
+                timeframe=interval,
+                symbol=sym,
+                data=df,
+            )
+            logger.info(f"Created new file: {file_path}")
+
+        metadata_record = _create_metadata_record(df, sym)
+        run_async_task(data_to_parquet_async(sym, metadata_record))
     except Exception as e:
         logger.error(f"Failed to save {sym} data to Parquet: {e}")
 

@@ -5,9 +5,9 @@ from datetime import datetime, timedelta
 import polars as pl
 from airflow.models import Variable
 
-from src.pipelines.iqfeedscrape_refactored import STATE_FILE
 from src.pipelines.extras.asyncer import run_async_task
 from src.pipelines.extras.extraction_manager import ExtractionManager
+from src.pipelines.iqfeedscrape_refactored import STATE_FILE
 from utils.CONSTANTS import SYMBOLS_COMPLETE
 from utils.logging import Logger
 
