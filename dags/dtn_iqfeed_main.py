@@ -8,9 +8,8 @@ from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from dotenv import load_dotenv
 
+from dags.short_circuits.apply import should_continue_data
 from src.config.config import config as cn
-from src.pipelines.extras.asyncer import run_async_task
-from src.pipelines.extras.extraction_manager import ExtractionManager
 from src.pipelines.iqfeed import historical
 from utils.CONSTANTS import SYMBOLS_COMPLETE
 from utils.emails import send_dag_failure_email, send_dag_success_email
@@ -48,64 +47,6 @@ dag = DAG(
 )
 
 
-def should_continue(**context):
-    try:
-        if not os.path.exists(SYMBOLS_COMPLETE):
-            return True
-
-        df = pl.read_parquet(SYMBOLS_COMPLETE)
-        if df.is_empty():
-            return False
-
-        all_symbols = df["symbol"].to_list()
-
-        extraction_manager = ExtractionManager()
-        start_date = Variable.get("START_DATE")
-        end_date = (
-            Variable.get("END_DATE")
-            if Variable.get("END_DATE")
-            else (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
-        )
-        interval = Variable.get("INTERVAL")
-
-        start_dt = datetime.strptime(start_date, "%Y%m%d")
-        end_dt = datetime.strptime(end_date, "%Y%m%d")
-
-        successful_extractions = run_async_task(
-            extraction_manager.get_successful_extractions()
-        )
-
-        relevant_extractions = [
-            e
-            for e in successful_extractions
-            if (
-                e.start_date.date() == start_dt.date()
-                and e.end_date.date() == end_dt.date()
-                and e.interval == interval
-            )
-        ]
-
-        processed_symbols = [e.ticker for e in relevant_extractions]
-        pending_symbols = [
-            sym for sym in all_symbols if sym not in processed_symbols
-        ]
-        should_continue = len(pending_symbols) > 0
-
-        if should_continue:
-            logger.info(
-                f"DAG will continue: {len(pending_symbols)} symbols still need processing"
-            )
-        else:
-            logger.info(
-                "DAG completed: All symbols processed successfully"
-            )
-
-        return should_continue
-    except Exception as e:
-        logger.error(f"Error in should_continue: {e}")
-        return True
-
-
 def download_all_symbols():
     if not os.path.exists(SYMBOLS_COMPLETE):
         raise FileNotFoundError("parquet not found")
@@ -137,7 +78,7 @@ download_task = PythonOperator(
 
 check_complete_task = ShortCircuitOperator(
     task_id="check_if_should_continue",
-    python_callable=should_continue,
+    python_callable=should_continue_data,
     provide_context=True,
     trigger_rule="all_done",
     dag=dag,
@@ -145,7 +86,7 @@ check_complete_task = ShortCircuitOperator(
 
 trigger_self_task = TriggerDagRunOperator(
     task_id="trigger_self_if_not_complete",
-    trigger_dag_id="HIST_META_SYMBOLS_V1.1.0",
+    trigger_dag_id=f"HIST_META_SYMBOLS_{os.getenv('HIST_META_SYMBOLS','v1_2')}",
     wait_for_completion=False,
     reset_dag_run=False,
     trigger_rule="all_done",

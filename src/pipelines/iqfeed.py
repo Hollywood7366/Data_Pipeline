@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from typing import List
 
-from src.models.ticker_history import TickerExtraction
 from src.pipelines.extras.asyncer import (
     get_async_logs_script,
     run_async_task,
@@ -35,6 +34,9 @@ def historical(
     successful_tickers = []
 
     extraction_manager = ExtractionManager()
+    if start_date == "CURRENT":
+        day_before_yesterday = datetime.now() - timedelta(days=2)
+        start_date = day_before_yesterday.strftime("%Y%m%d")
     if not end_date:
         yesterday = datetime.now() - timedelta(days=1)
         end_date = yesterday.strftime("%Y%m%d")

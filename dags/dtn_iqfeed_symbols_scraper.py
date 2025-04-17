@@ -1,4 +1,3 @@
-import json
 import os
 from datetime import datetime, timedelta
 
@@ -7,8 +6,8 @@ from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from dotenv import load_dotenv
 
+from dags.short_circuits.apply import should_continue_scraper
 from src.pipelines.iqfeedscrape_refactored import (
-    STATE_FILE,
     inspect_state_file,
     reset_scraper_state,
     scrape_dtn_symbols,
@@ -19,19 +18,6 @@ from utils.logging import Logger
 load_dotenv(dotenv_path="/opt/airflow/.env")
 
 logger = Logger(name="dtn_iqfeed_scraper", log_dir="/opt/airflow/logs")
-
-
-def should_continue(**kwargs):
-    try:
-        if os.path.exists(STATE_FILE):
-            with open(STATE_FILE, "r") as f:
-                state = json.load(f)
-            return not state.get("complete", False)
-        return False
-    except Exception as e:
-        logger.error(f"Error checking state file for loop logic: {e}")
-        return False
-
 
 default_args = {
     "owner": "Sarim Sikander",
@@ -84,14 +70,14 @@ with DAG(
 
     check_complete_task = ShortCircuitOperator(
         task_id="check_if_should_continue",
-        python_callable=should_continue,
+        python_callable=should_continue_scraper,
         provide_context=True,
         trigger_rule="all_done",
     )
 
     trigger_self_task = TriggerDagRunOperator(
         task_id="trigger_self_if_not_complete",
-        trigger_dag_id="DTN_IQFEED_BATCH_SCRAPER_V1.0.0",
+        trigger_dag_id=f"DTN_IQFEED_BATCH_SCRAPER_{os.getenv('DTN_IQFEED_BATCH_SCRAPER','v1_2')}",
         wait_for_completion=False,
         reset_dag_run=False,
         trigger_rule="all_done",

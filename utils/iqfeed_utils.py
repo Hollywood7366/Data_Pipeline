@@ -161,9 +161,7 @@ def _save_data_and_metadata(
     security_type: str,
     interval: str,
 ) -> None:
-    parquet_handler = ParquetDatabaseHandler(
-        base_path=STORAGE_DIR
-    )
+    parquet_handler = ParquetDatabaseHandler(base_path=STORAGE_DIR)
 
     file_path = parquet_handler.save_data(
         exchange=exchange,

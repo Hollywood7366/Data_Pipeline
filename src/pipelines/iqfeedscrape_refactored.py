@@ -106,7 +106,6 @@ def enhanced_perform_search(
 
         # If search_text is provided, we want only the first row, so set total_records to 1
         if search_text:
-            logger.info(f"Search text provided, taking only first result")
             total_records = 1
         else:
             total_records = extract_record_count(driver)
@@ -294,8 +293,6 @@ def go_to_specific_page(driver, page_number):
     try:
         if page_number == 1:
             return True
-
-        logger.info(f"Attempting to navigate to page {page_number}")
 
         try:
             page_input = WebDriverWait(driver, 5).until(
