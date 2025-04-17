@@ -211,6 +211,14 @@ def _create_metadata_record(df: pl.DataFrame, sym: str) -> dict:
     max_high = df.select(pl.col("High").max())[0, 0]
     min_low = df.select(pl.col("Low").min())[0, 0]
     total_volume = df.select(pl.col("TotalVolume").sum())[0, 0]
+    
+    if total_volume > 9223372036854775807:
+        logger.warning(f"Total volume for {sym} exceeds database limits, capping value")
+        total_volume = 9223372036854775807
+    if total_volume > 2147483647:
+        logger.warning(f"Total volume for {sym} exceeds INT limit, capping value")
+        total_volume = 2147483647
+    
     avg_close = df.select(pl.col("Close").mean())[0, 0]
     last_datetime = df.select(pl.col("DateTime")).row(-1)[0]
     count = df.height
