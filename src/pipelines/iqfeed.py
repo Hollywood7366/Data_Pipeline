@@ -20,7 +20,6 @@ from utils.util import _parse_raw_data
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
 
-
 def historical(
     host: str,
     port: int,
@@ -34,6 +33,7 @@ def historical(
     successful_tickers = []
 
     extraction_manager = ExtractionManager()
+    
     if start_date == "CURRENT":
         day_before_yesterday = datetime.now() - timedelta(days=2)
         start_date = day_before_yesterday.strftime("%Y%m%d")
@@ -55,16 +55,16 @@ def historical(
             logger.info(f"End date adjusted to previous day: {end_date}")
 
         for sym in tickers:
-            logger.info(f"Downloading data for: {sym}")
             if not extraction_manager.should_process_ticker(
                 sym, start_dt, end_dt, interval
             ):
                 logger.info(
                     f"Skipping {sym} - already processed for this date range"
                 )
-                successful_tickers.append(sym)
+                # successful_tickers.append(sym)
                 continue
 
+            logger.info(f"Downloading data for: {sym}")
             if interval.upper() == "TICK":
                 message = (
                     f"HTT,{sym},{start_date} 093000,{end_date} 160000\n"
