@@ -293,6 +293,7 @@ def identify_and_backfill_missing_dates(security_type):
                 interval=interval,
                 tickers=[symbol],
                 records=single_symbol_df,
+                backfill=True
             )
             
             logger.info(f"Successfully backfilled {security_type} symbol {symbol} for date range {start_date} to {end_date}")

@@ -29,6 +29,7 @@ def historical(
     tickers: List[str],
     records,
     end_date: str = None,
+    backfill = False
 ):
     all_data = {}
     successful_tickers = []
@@ -56,14 +57,15 @@ def historical(
             logger.info(f"End date adjusted to previous day: {end_date}")
 
         for sym in tickers:
-            if not extraction_manager.should_process_ticker(
-                sym, start_dt, end_dt, interval
-            ):
-                logger.info(
-                    f"Skipping {sym} - already processed for this date range"
-                )
-                # successful_tickers.append(sym)
-                continue
+            if backfill == False:
+                if not extraction_manager.should_process_ticker(
+                    sym, start_dt, end_dt, interval
+                ):
+                    logger.info(
+                        f"Skipping {sym} - already processed for this date range"
+                    )
+                    # successful_tickers.append(sym)
+                    continue
 
             logger.info(f"Downloading data for: {sym}")
             if interval.upper() == "TICK":
