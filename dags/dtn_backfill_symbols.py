@@ -108,22 +108,12 @@ def identify_and_backfill_missing_dates(security_type):
     min_date = date(1950, 1, 1)
     max_date = datetime.now().date() - timedelta(days=1)  # Yesterday
     
-    # Get batch size from environment or default to processing 10 symbols per DAG run
-    batch_size = int(os.getenv(f"BACKFILL_BATCH_SIZE_{security_type}", 
-                              os.getenv("BACKFILL_BATCH_SIZE", "10")))
-    
     # Initialize list to track symbols that need backfilling
     symbols_to_backfill = []
     missing_date_ranges = []
     
-    # Limit processed symbols for this run based on batch size
-    processed_symbols = 0
-    
     # Check each symbol for missing dates
     for row in security_type_df.iter_rows(named=True):
-        if processed_symbols >= batch_size:
-            break
-            
         symbol = row["symbol"]
         exchange = row.get("exchange", "DEFAULT")
         
@@ -141,7 +131,6 @@ def identify_and_backfill_missing_dates(security_type):
                     # Empty or malformed data, needs complete backfill
                     symbols_to_backfill.append(row)
                     missing_date_ranges.append((min_date, max_date))
-                    processed_symbols += 1
                     continue
                 
                 # Convert dates to python date objects if they're datetime
@@ -187,7 +176,6 @@ def identify_and_backfill_missing_dates(security_type):
                             symbols_to_backfill.append(row)
                             missing_date_ranges.append((start_date, end_date))
                         
-                        processed_symbols += 1
                         continue
                     elif dates[0] > min_date:
                         # Missing beginning data
@@ -212,13 +200,11 @@ def identify_and_backfill_missing_dates(security_type):
                     # Add the main missing range
                     symbols_to_backfill.append(row)
                     missing_date_ranges.append((start_date, end_date))
-                    processed_symbols += 1
                 
             except FileNotFoundError:
                 # Symbol file doesn't exist, needs complete backfill
                 symbols_to_backfill.append(row)
                 missing_date_ranges.append((min_date, max_date))
-                processed_symbols += 1
                 
         except Exception as e:
             logger.error(f"Error processing symbol {symbol}: {e}")
@@ -226,10 +212,10 @@ def identify_and_backfill_missing_dates(security_type):
     
     # If no symbols need backfilling, we're done
     if not symbols_to_backfill:
-        logger.info(f"No symbols need backfilling for {security_type} in this batch.")
+        logger.info(f"No symbols need backfilling for {security_type}.")
         return
     
-    logger.info(f"Found {len(symbols_to_backfill)} {security_type} symbol ranges to backfill in this batch.")
+    logger.info(f"Found {len(symbols_to_backfill)} {security_type} symbol ranges to backfill.")
     
     # Create a records dataframe with the symbols to backfill
     records_df = pl.DataFrame(symbols_to_backfill)
@@ -266,13 +252,7 @@ def identify_and_backfill_missing_dates(security_type):
             logger.error(f"Failed to backfill {security_type} symbol {symbol} for date range {start_date} to {end_date}: {e}")
             continue
             
-    logger.info(f"Completed backfill batch of {len(symbols_to_backfill)} {security_type} symbol ranges")
-    
-    # Store batch tracking information 
-    Variable.set(
-        f"BACKFILL_LAST_PROCESSED_{security_type}_SYMBOL", 
-        str(processed_symbols)
-    )
+    logger.info(f"Completed backfill of {len(symbols_to_backfill)} {security_type} symbol ranges")
 
 
 # Create tasks for each security type
