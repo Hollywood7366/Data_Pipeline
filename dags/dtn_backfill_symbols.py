@@ -130,6 +130,7 @@ def identify_and_backfill_missing_dates(security_type):
         try:
             # Try to load the parquet file for this symbol
             try:
+                symbol = symbol.replace('.','_')
                 symbol_data = db_handler.load_data(exchange, security_type, interval, symbol)
                 
                 # Get the date column (might be 'date' or 'datetime')
