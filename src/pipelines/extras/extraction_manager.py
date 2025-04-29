@@ -77,22 +77,34 @@ class ExtractionManager:
                 f"Error retrieving latest extraction for {ticker}: {e}"
             )
             return None
-        
-    async def get_extraction_date_range(self, ticker: str, interval: str) -> tuple:
+
+    async def get_extraction_date_range(
+        self, ticker: str, interval: str
+    ) -> tuple:
         try:
             records = await self.db.get_by_column("ticker", ticker)
-            
-            matching_records = [r for r in records if r.successful and r.interval == interval]
-            
+
+            matching_records = [
+                r
+                for r in records
+                if r.successful and r.interval == interval
+            ]
+
             if not matching_records:
                 return None, None
-                
-            oldest_start_date = min(matching_records, key=lambda x: x.start_date).start_date
-            newest_end_date = max(matching_records, key=lambda x: x.end_date).end_date
-            
-            logger.info(f"Found date range for {ticker}: {oldest_start_date.date()} to {newest_end_date.date()}")
+
+            oldest_start_date = min(
+                matching_records, key=lambda x: x.start_date
+            ).start_date
+            newest_end_date = max(
+                matching_records, key=lambda x: x.end_date
+            ).end_date
+
+            logger.info(
+                f"Found date range for {ticker}: {oldest_start_date.date()} to {newest_end_date.date()}"
+            )
             return oldest_start_date, newest_end_date
-            
+
         except Exception as e:
             logger.error(
                 f"Error retrieving extraction date range for {ticker}: {e}"
@@ -105,20 +117,25 @@ class ExtractionManager:
         oldest_start, newest_end = run_async_task(
             self.get_extraction_date_range(sym, interval)
         )
-        
+
         if oldest_start is None or newest_end is None:
-            logger.info(f"Processing {sym}: no previous extractions found with matching interval")
+            logger.info(
+                f"Processing {sym}: no previous extractions found with matching interval"
+            )
             return True
-            
+
         requested_start_date = start_dt.date()
         requested_end_date = end_dt.date()
-        
-        if requested_start_date >= oldest_start.date() and requested_end_date <= newest_end.date():
+
+        if (
+            requested_start_date >= oldest_start.date()
+            and requested_end_date <= newest_end.date()
+        ):
             logger.info(
                 f"Skipping {sym}: already processed for the requested date range (within {oldest_start.date()} to {newest_end.date()})"
             )
             return False
-        
+
         logger.info(
             f"Processing {sym}: requested date range not fully covered by existing extractions"
         )

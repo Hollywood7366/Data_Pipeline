@@ -20,6 +20,7 @@ from utils.util import _parse_raw_data
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
 
+
 def historical(
     host: str,
     port: int,
@@ -33,7 +34,7 @@ def historical(
     successful_tickers = []
 
     extraction_manager = ExtractionManager()
-    
+
     if start_date == "CURRENT":
         day_before_yesterday = datetime.now() - timedelta(days=2)
         start_date = day_before_yesterday.strftime("%Y%m%d")

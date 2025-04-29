@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 from utils.CONSTANTS import STORAGE_DIR
 from utils.emails import send_dag_failure_email
 from utils.logging import Logger
-from utils.util import base_path
 
 load_dotenv(dotenv_path="/opt/airflow/.env")
 logger = Logger(
