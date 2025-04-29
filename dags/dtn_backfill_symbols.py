@@ -21,16 +21,6 @@ load_dotenv(dotenv_path="/opt/airflow/.env")
 
 logger = Logger(name="iqfeed_backfill", log_dir="data/logs")
 
-# Security types to process - import from CONSTANTS or define here
-GET_THIS_TYPE = {
-    'FUTURE': True,
-    'FOREX': True,
-    'EQUITY': False,
-    'FOPTION': True,
-    'IEOPTION': True
-}
-
-# Default arguments for the DAG
 default_args = {
     "owner": "Sarim Sikander",
     "start_date": datetime(2025, 4, 1),
@@ -65,19 +55,17 @@ def should_run_security_type(security_type):
     import os
     from utils.CONSTANTS import GET_THIS_TYPE as CONSTANTS_GET_THIS_TYPE
     
-    # Try to get from environment variables first (useful for runtime configuration)
     env_setting = os.getenv(f"GET_THIS_TYPE_{security_type}", "").lower()
     if env_setting in ("true", "1", "yes"):
         return True
     elif env_setting in ("false", "0", "no"):
         return False
     
-    # Fall back to CONSTANTS if available
     try:
         return CONSTANTS_GET_THIS_TYPE.get(security_type, False)
     except (AttributeError, ImportError):
         # Finally fall back to the dict defined in this file
-        return GET_THIS_TYPE.get(security_type, False)
+        return CONSTANTS_GET_THIS_TYPE.get(security_type, False)
 
 
 def identify_and_backfill_missing_dates(security_type):
