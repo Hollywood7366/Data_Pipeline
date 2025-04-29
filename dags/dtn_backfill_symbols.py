@@ -124,7 +124,7 @@ def identify_and_backfill_missing_dates(security_type):
                 symbol_data = db_handler.load_data(exchange, security_type, interval, symbol)
                 
                 # Get the date column (might be 'date' or 'datetime')
-                date_col = "datetime" if "datetime" in symbol_data.columns else "date"
+                date_col = "DateTime" if "DateTime" in symbol_data.columns else "date"
                 
                 # Check if data exists and has dates
                 if symbol_data.is_empty() or date_col not in symbol_data.columns:
