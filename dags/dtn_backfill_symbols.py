@@ -1,8 +1,6 @@
 import os
 from datetime import datetime, timedelta, date
-from pathlib import Path
 
-from pipelines.transformations.misc import ParquetDatabaseHandler
 import polars as pl
 from airflow import DAG
 from airflow.models import Variable
@@ -10,6 +8,7 @@ from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from dotenv import load_dotenv
 
+from src.pipelines.transformations.misc import ParquetDatabaseHandler
 from dags.short_circuits.apply import should_continue_data
 from src.config.config import config as cn
 from src.pipelines.iqfeed import historical
@@ -24,11 +23,11 @@ logger = Logger(name="iqfeed_backfill", log_dir="data/logs")
 
 # Security types to process - import from CONSTANTS or define here
 GET_THIS_TYPE = {
-    'FUTURE': False,
-    'FOREX': False,
+    'FUTURE': True,
+    'FOREX': True,
     'EQUITY': False,
-    'FOPTION': False,
-    'IEOPTION': False
+    'FOPTION': True,
+    'IEOPTION': True
 }
 
 # Default arguments for the DAG
