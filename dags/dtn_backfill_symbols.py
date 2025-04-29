@@ -66,6 +66,45 @@ def should_run_security_type(security_type):
     except (AttributeError, ImportError):
         # Finally fall back to the dict defined in this file
         return CONSTANTS_GET_THIS_TYPE.get(security_type, False)
+        
+# Add a helper function to check if a symbol has already been processed
+def is_symbol_already_processed(symbol, start_date, end_date):
+    """Check if the symbol has already been processed for the given date range"""
+    # Check if there's a metadata file that tracks processed symbols
+    metadata_file = os.path.join(os.getenv("STORAGE_PATH", "data/market_data"), "backfill_metadata.txt")
+    
+    try:
+        if os.path.exists(metadata_file):
+            with open(metadata_file, 'r') as f:
+                content = f.read()
+                # Check if the symbol and date range are mentioned in the metadata
+                entry = f"{symbol}:{start_date.strftime('%Y-%m-%d')}:{end_date.strftime('%Y-%m-%d')}"
+                if entry in content:
+                    return True
+    except Exception as e:
+        logger.error(f"Error checking if symbol {symbol} was processed: {e}")
+    
+    return False
+
+def mark_symbol_as_processed(symbol, start_date, end_date):
+    """Mark a symbol as processed for the given date range"""
+    # Create or update a metadata file that tracks processed symbols
+    metadata_file = os.path.join(os.getenv("STORAGE_PATH", "data/market_data"), "backfill_metadata.txt")
+    
+    try:
+        entry = f"{symbol}:{start_date.strftime('%Y-%m-%d')}:{end_date.strftime('%Y-%m-%d')}\n"
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(metadata_file), exist_ok=True)
+        
+        # Append to the file
+        with open(metadata_file, 'a') as f:
+            f.write(entry)
+    except Exception as e:
+        logger.error(f"Error marking symbol {symbol} as processed: {e}")
+        return False
+    
+    return True
 
 
 def identify_and_backfill_missing_dates(security_type):
@@ -123,8 +162,13 @@ def identify_and_backfill_missing_dates(security_type):
                 symbol = symbol.replace('.','_')
                 symbol_data = db_handler.load_data(exchange, security_type, interval, symbol)
                 
-                # Get the date column (might be 'date' or 'datetime')
-                date_col = "DateTime" if "DateTime" in symbol_data.columns else "date"
+                # Get the date column (might be 'DateTime', 'datetime' or 'date')
+                if "DateTime" in symbol_data.columns:
+                    date_col = "DateTime"
+                elif "datetime" in symbol_data.columns:
+                    date_col = "datetime"
+                else:
+                    date_col = "date"
                 
                 # Check if data exists and has dates
                 if symbol_data.is_empty() or date_col not in symbol_data.columns:
@@ -236,6 +280,11 @@ def identify_and_backfill_missing_dates(security_type):
             single_symbol_df = pl.DataFrame([symbol_row])
             
             # Fetch historical data for this symbol and date range
+            # Check if this symbol was already processed for this date range
+            if is_symbol_already_processed(symbol, start_date, end_date):
+                logger.info(f"Symbol {symbol} already processed for date range {start_date} to {end_date}, skipping...")
+                continue
+                
             historical(
                 host=cn.IQFEED_HOST,
                 port=int(cn.IQFEED_PORT),
@@ -247,6 +296,8 @@ def identify_and_backfill_missing_dates(security_type):
             )
             
             logger.info(f"Successfully backfilled {security_type} symbol {symbol} for date range {start_date} to {end_date}")
+            # Mark this symbol as processed
+            mark_symbol_as_processed(symbol, start_date, end_date)
             
         except Exception as e:
             logger.error(f"Failed to backfill {security_type} symbol {symbol} for date range {start_date} to {end_date}: {e}")
