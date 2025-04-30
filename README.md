@@ -54,3 +54,14 @@ If you need to downgrade the database or reset it. You can use `alembic downgrad
 ## If Docker taking more space?
 Use:
 `docker system prune -a`
+
+## Testing before Commits
+This repository uses pre-commit hooks to ensure code quality and consistency. Follow these steps to set it up:
+Install pre-commit:
+`pip install pre-commit`
+
+Install the hooks:
+`pre-commit install`
+
+To run manually against all files:
+`pre-commit run --all-files`

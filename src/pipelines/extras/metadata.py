@@ -64,7 +64,6 @@ class MetadataManager:
             )
 
             if existing_obj:
-
                 existing_obj.count += 1
                 existing_obj.status = SYMBOLS_METADATA_STATUS[1]
                 existing_obj.max_high = record["max_high"]

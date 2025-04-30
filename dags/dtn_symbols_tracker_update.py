@@ -15,11 +15,7 @@ from src.pipelines.transformations.parquet_misc import (
     parquet_columns_naming,
 )
 from utils.atomic_creator import AtomicFileUpdate
-from utils.CONSTANTS import (
-    CREDENTIALS_PATH,
-    SYMBOLS_COMPLETE,
-    SYMBOLS_RAW,
-)
+from utils.CONSTANTS import CREDENTIALS_PATH, SYMBOLS_COMPLETE, SYMBOLS_RAW
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
 

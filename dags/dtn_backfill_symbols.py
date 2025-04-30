@@ -32,7 +32,7 @@ dag = DAG(
     dag_id=f"HIST_BACKFILL_SYMBOLS_{os.getenv('HIST_BACKFILL_SYMBOLS','v1_0')}",
     default_args=default_args,
     description="Backfill missing historical data from IQFeed for symbols by security type",
-    schedule_interval="0 12 * * *", 
+    schedule_interval="0 12 * * *",
     catchup=False,
     tags=[
         "iqfeed",
@@ -43,7 +43,7 @@ dag = DAG(
     ],
 )
 
-security_types = ['FUTURE', 'FOREX', 'EQUITY', 'FOPTION', 'IEOPTION']
+security_types = ["FUTURE", "FOREX", "EQUITY", "FOPTION", "IEOPTION"]
 security_type_tasks = {}
 
 for sec_type in security_types:

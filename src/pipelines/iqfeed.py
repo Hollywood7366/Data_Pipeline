@@ -29,7 +29,7 @@ def historical(
     tickers: List[str],
     records,
     end_date: str = None,
-    backfill = False
+    backfill=False,
 ):
     all_data = {}
     successful_tickers = []
@@ -58,23 +58,29 @@ def historical(
 
         for sym in tickers:
             if backfill == False:
-                should_process, adjusted_start_dt, adjusted_end_dt = extraction_manager.should_process_ticker(
+                (
+                    should_process,
+                    adjusted_start_dt,
+                    adjusted_end_dt,
+                ) = extraction_manager.should_process_ticker(
                     sym, start_dt, end_dt, interval
                 )
-                
+
                 if not should_process:
                     logger.info(
                         f"Skipping {sym} - already processed for this date range"
                     )
                     continue
-                
+
                 current_start_dt = adjusted_start_dt
                 current_end_dt = adjusted_end_dt
-                
+
                 current_start_date = current_start_dt.strftime("%Y%m%d")
                 current_end_date = current_end_dt.strftime("%Y%m%d")
-                
-                logger.info(f"Processing {sym} from {current_start_date} to {current_end_date}")
+
+                logger.info(
+                    f"Processing {sym} from {current_start_date} to {current_end_date}"
+                )
             else:
                 current_start_date = start_date
                 current_end_date = end_date
@@ -83,9 +89,7 @@ def historical(
 
             logger.info(f"Downloading data for: {sym}")
             if interval.upper() == "TICK":
-                message = (
-                    f"HTT,{sym},{current_start_date} 093000,{current_end_date} 160000\n"
-                )
+                message = f"HTT,{sym},{current_start_date} 093000,{current_end_date} 160000\n"
             else:
                 message = f"HIT,{sym},{interval},{current_start_date} 093000,{current_end_date} 160000\n"
 

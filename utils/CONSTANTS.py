@@ -25,8 +25,10 @@ SYMBOLS_MODEL_SELECTION = {
 
 SYMBOLS_METADATA_STATUS = ["ADDED", "UPDATED"]
 
-GET_THIS_TYPE = {'FUTURE': False,
-'FOREX': True,
-'EQUITY': False,
-'FOPTION': False,
-'IEOPTION':False}
+GET_THIS_TYPE = {
+    "FUTURE": False,
+    "FOREX": True,
+    "EQUITY": False,
+    "FOPTION": False,
+    "IEOPTION": False,
+}
