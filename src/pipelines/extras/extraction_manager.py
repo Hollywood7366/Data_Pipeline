@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, List
 
 from src.models import TickerExtraction
@@ -113,7 +113,7 @@ class ExtractionManager:
 
     def should_process_ticker(
         self, sym, start_dt, end_dt, interval
-    ) -> bool:
+    ):
         oldest_start, newest_end = run_async_task(
             self.get_extraction_date_range(sym, interval)
         )
@@ -122,7 +122,7 @@ class ExtractionManager:
             logger.info(
                 f"Processing {sym}: no previous extractions found with matching interval"
             )
-            return True
+            return True, start_dt, end_dt
 
         requested_start_date = start_dt.date()
         requested_end_date = end_dt.date()
@@ -134,9 +134,20 @@ class ExtractionManager:
             logger.info(
                 f"Skipping {sym}: already processed for the requested date range (within {oldest_start.date()} to {newest_end.date()})"
             )
-            return False
-
-        logger.info(
-            f"Processing {sym}: requested date range not fully covered by existing extractions"
-        )
-        return True
+            return False, start_dt, end_dt
+        
+        elif (
+            requested_start_date < newest_end.date()
+            and requested_end_date > newest_end.date()
+        ):
+            logger.info(
+                f"Partial processing for {sym}: adjusting start date from {requested_start_date} to {newest_end.date()}"
+            )
+            adjusted_start = datetime.combine(newest_end.date(), datetime.min.time()) + timedelta(days=1)
+            return True, adjusted_start, end_dt
+        
+        else:
+            logger.info(
+                f"Processing {sym}: requested date range not covered by existing extractions"
+            )
+            return True, start_dt, end_dt
