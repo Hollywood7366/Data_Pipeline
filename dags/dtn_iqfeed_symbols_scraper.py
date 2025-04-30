@@ -48,7 +48,6 @@ with DAG(
         f"pipeline_version:{os.getenv('PIPELINE_VERSION','v1_2')}",
     ],
 ) as dag:
-
     scrape_task = PythonOperator(
         task_id="scrape_dtn_symbols",
         python_callable=scrape_dtn_symbols,

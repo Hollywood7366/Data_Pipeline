@@ -111,9 +111,7 @@ class ExtractionManager:
             )
             return None, None
 
-    def should_process_ticker(
-        self, sym, start_dt, end_dt, interval
-    ):
+    def should_process_ticker(self, sym, start_dt, end_dt, interval):
         oldest_start, newest_end = run_async_task(
             self.get_extraction_date_range(sym, interval)
         )
@@ -135,7 +133,7 @@ class ExtractionManager:
                 f"Skipping {sym}: already processed for the requested date range (within {oldest_start.date()} to {newest_end.date()})"
             )
             return False, start_dt, end_dt
-        
+
         elif (
             requested_start_date < newest_end.date()
             and requested_end_date > newest_end.date()
@@ -143,9 +141,11 @@ class ExtractionManager:
             logger.info(
                 f"Partial processing for {sym}: adjusting start date from {requested_start_date} to {newest_end.date()}"
             )
-            adjusted_start = datetime.combine(newest_end.date(), datetime.min.time()) + timedelta(days=1)
+            adjusted_start = datetime.combine(
+                newest_end.date(), datetime.min.time()
+            ) + timedelta(days=1)
             return True, adjusted_start, end_dt
-        
+
         else:
             logger.info(
                 f"Processing {sym}: requested date range not covered by existing extractions"
