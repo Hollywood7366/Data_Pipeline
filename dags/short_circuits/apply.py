@@ -17,12 +17,16 @@ logger = Logger(name="iqfeed", log_dir="data/logs")
 def should_continue_data(**context):
     try:
         if not os.path.exists(SYMBOLS_COMPLETE):
-            logger.info("SYMBOLS_COMPLETE file not found, returning True to continue DAG")
+            logger.info(
+                "SYMBOLS_COMPLETE file not found, returning True to continue DAG"
+            )
             return True
 
         df = pl.read_parquet(SYMBOLS_COMPLETE)
         if df.is_empty():
-            logger.info("SYMBOLS_COMPLETE file is empty, returning False to stop DAG")
+            logger.info(
+                "SYMBOLS_COMPLETE file is empty, returning False to stop DAG"
+            )
             return False
 
         all_symbols = df["symbol"].to_list()
@@ -66,12 +70,14 @@ def should_continue_data(**context):
         logger.info(f"Total symbols: {len(all_symbols)}")
         logger.info(f"Processed symbols: {len(processed_symbols)}")
         logger.info(f"Pending symbols: {len(pending_symbols)}")
-        
+
         if should_continue:
             logger.info(
                 f"DAG will continue: {len(pending_symbols)} symbols still need processing"
             )
-            logger.info(f"First 5 pending symbols: {pending_symbols[:5] if len(pending_symbols) >= 5 else pending_symbols}")
+            logger.info(
+                f"First 5 pending symbols: {pending_symbols[:5] if len(pending_symbols) >= 5 else pending_symbols}"
+            )
         else:
             logger.info(
                 "DAG completed: All symbols processed successfully - STOPPING DAG"
