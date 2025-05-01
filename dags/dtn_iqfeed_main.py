@@ -80,7 +80,6 @@ check_complete_task = ShortCircuitOperator(
     task_id="check_if_should_continue",
     python_callable=should_continue_data,
     provide_context=True,
-    trigger_rule="all_done",
     dag=dag,
 )
 
@@ -89,7 +88,6 @@ trigger_self_task = TriggerDagRunOperator(
     trigger_dag_id=f"HIST_META_SYMBOLS_{os.getenv('HIST_META_SYMBOLS','v1_2')}",
     wait_for_completion=False,
     reset_dag_run=False,
-    trigger_rule="all_done",
     dag=dag,
 )
 
