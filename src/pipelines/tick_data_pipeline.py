@@ -60,10 +60,12 @@ def download_ticks(symbol, config, records):
     current_start_dt = start_dt
     current_end_dt = end_dt
 
-    should_process, adjusted_start_dt, adjusted_end_dt = (
-        extraction_manager.should_process_ticker(
-            symbol, start_dt, end_dt, interval
-        )
+    (
+        should_process,
+        adjusted_start_dt,
+        adjusted_end_dt,
+    ) = extraction_manager.should_process_ticker(
+        symbol, start_dt, end_dt, interval
     )
 
     if not should_process:

@@ -57,35 +57,30 @@ def historical(
             logger.info(f"End date adjusted to previous day: {end_date}")
 
         for sym in tickers:
-            if not backfill:
-                (
-                    should_process,
-                    adjusted_start_dt,
-                    adjusted_end_dt,
-                ) = extraction_manager.should_process_ticker(
-                    sym, start_dt, end_dt, interval
-                )
+            logger.info(f'sym:{sym}, start_dt:{start_dt}, end_dt:{end_dt}, interval:{interval}')
+            (
+                should_process,
+                adjusted_start_dt,
+                adjusted_end_dt,
+            ) = extraction_manager.should_process_ticker(
+                sym, start_dt, end_dt, interval
+            )
 
-                if not should_process:
-                    logger.info(
-                        f"Skipping {sym} - already processed for this date range"
-                    )
-                    continue
-
-                current_start_dt = adjusted_start_dt
-                current_end_dt = adjusted_end_dt
-
-                current_start_date = current_start_dt.strftime("%Y%m%d")
-                current_end_date = current_end_dt.strftime("%Y%m%d")
-
+            if not should_process:
                 logger.info(
-                    f"Processing {sym} from {current_start_date} to {current_end_date}"
+                    f"Skipping {sym} - already processed for this date range"
                 )
-            else:
-                current_start_date = start_date
-                current_end_date = end_date
-                current_start_dt = start_dt
-                current_end_dt = end_dt
+                continue
+
+            current_start_dt = adjusted_start_dt
+            current_end_dt = adjusted_end_dt
+
+            current_start_date = current_start_dt.strftime("%Y%m%d")
+            current_end_date = current_end_dt.strftime("%Y%m%d")
+
+            logger.info(
+                f"Processing {sym} from {current_start_date} to {current_end_date}"
+            )
 
             logger.info(f"Downloading data for: {sym}")
             message = f"HIT,{sym},{interval},{current_start_date} 093000,{current_end_date} 160000\n"
@@ -104,6 +99,7 @@ def historical(
                     f"Successfully processed {record_count} records for {sym}"
                 )
 
+                logger.info(f'sym:{sym}, start_dt:{current_start_dt}, end_dt:{current_end_dt}, interval:{interval}')
                 run_async_task(
                     extraction_manager.record_extraction(
                         ticker=sym,
