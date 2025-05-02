@@ -20,6 +20,119 @@ from utils.util import _parse_raw_data
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
 
+def get_tick_historical(
+    host: str,
+    port: int,
+    start_date: str,
+    interval: str,
+    symbols: List[str],
+    records,
+    end_date: str = None
+):
+    all_data = {}
+    successful_tickers = []
+    interval = "TICK"
+    
+    if start_date == "CURRENT":
+        day_before_yesterday = datetime.now() - timedelta(days=2)
+        start_date = day_before_yesterday.strftime("%Y%m%d")
+    if not end_date:
+        yesterday = datetime.now() - timedelta(days=1)
+        end_date = yesterday.strftime("%Y%m%d")
+    
+    logger.info(f"Processing tick data from {start_date} to {end_date}")
+    
+    start_dt = datetime.strptime(start_date, "%Y%m%d")
+    end_dt = datetime.strptime(end_date, "%Y%m%d")
+    
+    yesterday_dt = datetime.now() - timedelta(days=1)
+    if end_dt > yesterday_dt:
+        end_dt = yesterday_dt
+        end_date = yesterday_dt.strftime("%Y%m%d")
+        logger.info(f"End date adjusted to previous day: {end_date}")
+        
+    extraction_manager = ExtractionManager()
+    
+    try:
+        sock = connect_to_socket(host, int(port))
+        
+        send_message_to_socket(sock, "S,SET PROTOCOL,6.2\n")
+        send_message_to_socket(sock, "S,TIMESTAMPSOFF\n")
+        max_datapoints = 1000000000000000
+        send_message_to_socket(sock, f"S,MAXDATAPOINTS,{max_datapoints}\n")
+        
+        for sym in symbols:
+            logger.info(f"Processing {sym} for tick data")
+            
+            should_process, adjusted_start_dt, adjusted_end_dt = extraction_manager.should_process_ticker(
+                sym, start_dt, end_dt, interval
+            )
+            
+            if not should_process:
+                logger.info(f"Skipping {sym} - already processed for this date range")
+                continue
+                
+            current_start_date = adjusted_start_dt.strftime("%Y%m%d 000000")
+            current_end_date = adjusted_end_dt.strftime("%Y%m%d 235959")
+            
+            logger.info(f"Processing {sym} from {current_start_date} to {current_end_date}")
+            
+            message = f"HTT,{sym},{current_start_date},{current_end_date},,,,1,1\n"
+            
+            send_message_to_socket(sock, message)
+            data = receive_data(sock)
+            
+            if data:
+                data = clean_data(data=data)
+                if data and not data.isspace():
+                    data_to_parquet(
+                        data=data, sym=sym, interval=interval, records=records, ticks=True
+                    )
+                    
+                    formatted_rows = _parse_raw_data(data)
+                    record_count = len(formatted_rows)
+                    logger.info(f"Successfully processed {record_count} tick records for {sym}")
+                    
+                    run_async_task(
+                        extraction_manager.record_extraction(
+                            ticker=sym,
+                            start_date=adjusted_start_dt,
+                            end_date=adjusted_end_dt,
+                            interval=interval,
+                            successful=True,
+                            record_count=record_count,
+                        )
+                    )
+                    
+                    all_data[sym] = data
+                    successful_tickers.append(sym)
+                else:
+                    logger.warning(f"No valid tick data received for {sym}")
+                    run_async_task(
+                        extraction_manager.record_extraction(
+                            ticker=sym,
+                            start_date=adjusted_start_dt,
+                            end_date=adjusted_end_dt,
+                            interval=interval,
+                            successful=False,
+                            record_count=0,
+                        )
+                    )
+            else:
+                logger.warning(f"No data received for {sym}")
+                
+        run_async_task(get_async_logs_script(successful_tickers))
+        close_socket(sock)
+        
+        logger.info(f"Tick data extraction completed. Processed {len(successful_tickers)} symbols successfully.")
+        
+    except Exception as e:
+        logger.error(f"Error in tick data download: {e}")
+        run_async_task(get_async_logs_script(successful_tickers))
+        try:
+            close_socket(sock)
+        except:
+            pass
 
 def historical(
     host: str,
@@ -57,7 +170,7 @@ def historical(
             logger.info(f"End date adjusted to previous day: {end_date}")
 
         for sym in tickers:
-            if backfill == False:
+            if not backfill:
                 (
                     should_process,
                     adjusted_start_dt,
@@ -88,10 +201,8 @@ def historical(
                 current_end_dt = end_dt
 
             logger.info(f"Downloading data for: {sym}")
-            if interval.upper() == "TICK":
-                message = f"HTT,{sym},{current_start_date} 093000,{current_end_date} 160000\n"
-            else:
-                message = f"HIT,{sym},{interval},{current_start_date} 093000,{current_end_date} 160000\n"
+            message = f"HIT,{sym},{interval},{current_start_date} 093000,{current_end_date} 160000\n"
+            logger.info(f"Interval request: {message}")
 
             send_message_to_socket(sock, message)
             data = receive_data(sock)
@@ -102,6 +213,8 @@ def historical(
                 )
                 formatted_rows = _parse_raw_data(data)
                 record_count = len(formatted_rows)
+                logger.info(f"Successfully processed {record_count} records for {sym}")
+                
                 run_async_task(
                     extraction_manager.record_extraction(
                         ticker=sym,
@@ -133,6 +246,10 @@ def historical(
     except Exception as e:
         logger.error(f"Error in historical data download: {e}")
         run_async_task(get_async_logs_script(successful_tickers))
+        try:
+            close_socket(sock)
+        except:
+            pass
 
 
 def live(host: str, port: int, ticker: str):
