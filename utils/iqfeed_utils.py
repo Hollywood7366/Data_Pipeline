@@ -73,17 +73,16 @@ def data_to_parquet(
     exchange = filtered_records.select("exchange").row(0)[0]
     security_type = filtered_records.select("security_type").row(0)[0]
 
-    formatted_rows = _parse_raw_data(data)
-    if not formatted_rows:
-        logger.warning(
-            f"No valid data for {sym}, skipping Parquet creation."
-        )
-        return
+    if not ticks:
+        formatted_rows = _parse_raw_data(data)
+        if not formatted_rows:
+            logger.warning(
+                f"No valid data for {sym}, skipping Parquet creation."
+            )
+            return
 
     try:
-        if ticks:
-            df = _create_ticks_dataframe(formatted_rows)
-        else:
+        if not ticks:
             df = _create_dataframe(formatted_rows)
         parquet_handler = ParquetDatabaseHandler(base_path=STORAGE_DIR)
 

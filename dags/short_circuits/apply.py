@@ -35,7 +35,7 @@ def should_continue_data(**context):
         start_date = (
             (datetime.now() - timedelta(days=2)).strftime("%Y%m%d")
             if Variable.get("START_DATE") == "CURRENT"
-            else Variable.get("START_DATE")
+            else "19500101"
         )
         end_date = (
             Variable.get("END_DATE")
