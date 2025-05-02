@@ -4,20 +4,14 @@ from datetime import datetime, timedelta
 import polars as pl
 from airflow import DAG
 from airflow.models import Variable
-from airflow.operators.python import PythonOperator, ShortCircuitOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from dotenv import load_dotenv
+from airflow.operators.python import PythonOperator
 
-from dags.short_circuits.apply import should_continue_data
-from src.config.config import config as cn
-from src.pipelines.iqfeed import get_tick_historical
+from src.pipelines.tick_data_pipeline import download_ticks
 from utils.CONSTANTS import SYMBOLS_COMPLETE
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
 
-load_dotenv(dotenv_path="/opt/airflow/.env")
-
-logger = Logger(name="iqfeed_tick", log_dir="data/logs")
+logger = Logger(name="iqfeed", log_dir="data/logs")
 
 default_args = {
     "owner": "Sarim Sikander",
@@ -26,29 +20,44 @@ default_args = {
     "email_on_success": True,
     "email_on_retry": False,
     "email": "sarimsikander24@gmail.com",
-    "on_failure_callback": send_dag_failure_email,
-    "on_success_callback": send_dag_success_email,
+    # "on_failure_callback": send_dag_failure_email,
+    # "on_success_callback": send_dag_success_email,
     "retries": 3,
     "retry_delay": timedelta(minutes=10),
 }
 
 dag = DAG(
-    dag_id=f"HIST_TICK_DATA_{os.getenv('HIST_TICK_DATA','v1_0')}",
+    dag_id=f"TICK_META_SYMBOLS_{os.getenv('TICK_META_SYMBOLS','v1_2')}",
     default_args=default_args,
-    description="Fetch historical tick data from IQFeed and save as parquet files per symbol",
-    # schedule_interval="0 1 * * *",
+    description="Fetch historical data from IQFeed and save as parquet files per symbol",
+    # schedule_interval="0 0 * * *",
     catchup=False,
     tags=[
         "iqfeed",
-        "tick_data",
         "symbols",
         "db",
-        f"pipeline_version:{os.getenv('PIPELINE_VERSION','v1_0')}",
+        f"pipeline_version:{os.getenv('PIPELINE_VERSION','v1_2')}",
     ],
 )
 
 
-def download_tick_data_custom():
+class Config:
+    def __init__(self):
+        self.protocol = "5.1"
+        self.command = "tick"
+        self.start_date = ""
+        self.end_date = ""
+        self.out_directory = "data"
+        self.time_zone = "ET"
+        self.interval_type = ""
+        self.interval_length = 0
+        self.parallelism = 8
+        self.detailed_logging = False
+        self.end_timestamp = False
+        self.use_labels = False
+
+
+def download_all_symbols():
     if not os.path.exists(SYMBOLS_COMPLETE):
         raise FileNotFoundError("parquet not found")
 
@@ -58,38 +67,27 @@ def download_tick_data_custom():
 
     symbols = df["symbol"].to_list()
 
-    data = get_tick_historical(
-        host=cn.IQFEED_HOST,
-        port=int(cn.IQFEED_PORT),
-        start_date=Variable.get("TICK_START_DATE"),
-        end_date=(
-            Variable.get("TICK_END_DATE") if Variable.get("TICK_END_DATE") else None
-        ),
-        interval=Variable.get("TICK_INTERVAL"),
-        symbols=symbols,
-        records=df,
-    )
+    start_date = Variable.get("TICK_START_DATE")
+    end_date = Variable.get("TICK_END_DATE")
+    out_directory = "data"
+    time_zone = "ET"
+    detailed_logging = False
+
+    config = Config()
+    config.start_date = start_date
+    config.end_date = end_date
+    config.out_directory = out_directory
+    config.time_zone = time_zone
+    config.detailed_logging = detailed_logging
+
+    for symbol in symbols:
+        download_ticks(symbol, config, records=df)
 
 
 download_task = PythonOperator(
-    task_id="download_historical_tick_data",
-    python_callable=download_tick_data_custom,
+    task_id="download_tick_data",
+    python_callable=download_all_symbols,
     dag=dag,
 )
 
-check_complete_task = ShortCircuitOperator(
-    task_id="check_if_should_continue",
-    python_callable=should_continue_data,
-    provide_context=True,
-    dag=dag,
-)
-
-trigger_self_task = TriggerDagRunOperator(
-    task_id="trigger_self_if_not_complete",
-    trigger_dag_id=f"HIST_TICK_DATA_{os.getenv('HIST_TICK_DATA','v1_0')}",
-    wait_for_completion=False,
-    reset_dag_run=False,
-    dag=dag,
-)
-
-download_task >> check_complete_task >> trigger_self_task
+# download_task
