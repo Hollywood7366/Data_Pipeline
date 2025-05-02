@@ -57,7 +57,7 @@ def download_all_symbols():
 
     symbols = df["symbol"].to_list()
 
-    data = historical(
+    data, current_start_date, current_end_date = historical(
         host=cn.IQFEED_HOST,
         port=int(cn.IQFEED_PORT),
         start_date=Variable.get("START_DATE"),
@@ -68,7 +68,10 @@ def download_all_symbols():
         tickers=symbols,
         records=df,
     )
-
+    return {
+        "current_start_date": current_start_date,
+        "current_end_date": current_end_date
+    }
 
 download_task = PythonOperator(
     task_id="download_historical_data",

@@ -31,22 +31,32 @@ def should_continue_data(**context):
 
         all_symbols = df["symbol"].to_list()
 
-        extraction_manager = ExtractionManager()
-        start_date = (
-            (datetime.now() - timedelta(days=2)).strftime("%Y%m%d")
-            if Variable.get("START_DATE") == "CURRENT"
-            else "19500101"
-        )
-        end_date = (
-            Variable.get("END_DATE")
-            if Variable.get("END_DATE")
-            else (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
-        )
+        ti = context['ti']
+        dates_dict = ti.xcom_pull(task_ids='download_historical_data')
+        
+        if dates_dict and 'current_start_date' in dates_dict and 'current_end_date' in dates_dict:
+            start_date = dates_dict['current_start_date']
+            end_date = dates_dict['current_end_date']
+            logger.info(f"Using dates from historical task: start={start_date}, end={end_date}")
+        else:
+            logger.info("Dates not found in XCom, using fallback calculation")
+            start_date = (
+                (datetime.now() - timedelta(days=2)).strftime("%Y%m%d")
+                if Variable.get("START_DATE") == "CURRENT"
+                else "19500101"
+            )
+            end_date = (
+                Variable.get("END_DATE")
+                if Variable.get("END_DATE")
+                else (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+            )
+        
         interval = Variable.get("INTERVAL")
 
         start_dt = datetime.strptime(start_date, "%Y%m%d")
         end_dt = datetime.strptime(end_date, "%Y%m%d")
 
+        extraction_manager = ExtractionManager()
         successful_extractions = run_async_task(
             extraction_manager.get_successful_extractions()
         )

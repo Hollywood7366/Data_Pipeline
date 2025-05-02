@@ -20,7 +20,6 @@ from utils.util import _parse_raw_data
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
 
-
 def historical(
     host: str,
     port: int,
@@ -33,6 +32,8 @@ def historical(
 ):
     all_data = {}
     successful_tickers = []
+    current_start_date = None
+    current_end_date = None
 
     extraction_manager = ExtractionManager()
 
@@ -56,34 +57,44 @@ def historical(
             end_date = yesterday_dt.strftime("%Y%m%d")
             logger.info(f"End date adjusted to previous day: {end_date}")
 
+        current_start_dt = start_dt
+        current_end_dt = end_dt
+        current_start_date = current_start_dt.strftime("%Y%m%d")
+        current_end_date = current_end_dt.strftime("%Y%m%d")
+
         for sym in tickers:
-            logger.info(f'sym:{sym}, start_dt:{start_dt}, end_dt:{end_dt}, interval:{interval}')
-            (
-                should_process,
-                adjusted_start_dt,
-                adjusted_end_dt,
-            ) = extraction_manager.should_process_ticker(
-                sym, start_dt, end_dt, interval
-            )
-
-            if not should_process:
-                logger.info(
-                    f"Skipping {sym} - already processed for this date range"
+            if not backfill:
+                (
+                    should_process,
+                    adjusted_start_dt,
+                    adjusted_end_dt,
+                ) = extraction_manager.should_process_ticker(
+                    sym, start_dt, end_dt, interval
                 )
-                continue
 
-            current_start_dt = adjusted_start_dt
-            current_end_dt = adjusted_end_dt
+                if not should_process:
+                    logger.info(
+                        f"Skipping {sym} - already processed for this date range"
+                    )
+                    continue
 
-            current_start_date = current_start_dt.strftime("%Y%m%d")
-            current_end_date = current_end_dt.strftime("%Y%m%d")
+                ticker_start_dt = adjusted_start_dt
+                ticker_end_dt = adjusted_end_dt
 
-            logger.info(
-                f"Processing {sym} from {current_start_date} to {current_end_date}"
-            )
+                ticker_start_date = ticker_start_dt.strftime("%Y%m%d")
+                ticker_end_date = ticker_end_dt.strftime("%Y%m%d")
+
+                logger.info(
+                    f"Processing {sym} from {ticker_start_date} to {ticker_end_date}"
+                )
+            else:
+                ticker_start_date = start_date
+                ticker_end_date = end_date
+                ticker_start_dt = start_dt
+                ticker_end_dt = end_dt
 
             logger.info(f"Downloading data for: {sym}")
-            message = f"HIT,{sym},{interval},{current_start_date} 093000,{current_end_date} 160000\n"
+            message = f"HIT,{sym},{interval},{ticker_start_date} 093000,{ticker_end_date} 160000\n"
             logger.info(f"Interval request: {message}")
 
             send_message_to_socket(sock, message)
@@ -99,12 +110,11 @@ def historical(
                     f"Successfully processed {record_count} records for {sym}"
                 )
 
-                logger.info(f'sym:{sym}, start_dt:{current_start_dt}, end_dt:{current_end_dt}, interval:{interval}')
                 run_async_task(
                     extraction_manager.record_extraction(
                         ticker=sym,
-                        start_date=current_start_dt,
-                        end_date=current_end_dt,
+                        start_date=ticker_start_dt,
+                        end_date=ticker_end_dt,
                         interval=interval,
                         successful=True,
                         record_count=record_count,
@@ -117,8 +127,8 @@ def historical(
                 run_async_task(
                     extraction_manager.record_extraction(
                         ticker=sym,
-                        start_date=current_start_dt,
-                        end_date=current_end_dt,
+                        start_date=ticker_start_dt,
+                        end_date=ticker_end_dt,
                         interval=interval,
                         successful=False,
                         record_count=0,
@@ -127,7 +137,7 @@ def historical(
 
         run_async_task(get_async_logs_script(successful_tickers))
         close_socket(sock)
-        return all_data
+        return all_data, current_start_date, current_end_date
     except Exception as e:
         logger.error(f"Error in historical data download: {e}")
         run_async_task(get_async_logs_script(successful_tickers))
@@ -135,6 +145,7 @@ def historical(
             close_socket(sock)
         except:
             pass
+        return {}, current_start_date, current_end_date
 
 
 def live(host: str, port: int, ticker: str):
