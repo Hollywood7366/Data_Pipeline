@@ -53,8 +53,8 @@ def should_continue_data(**context):
         
         interval = Variable.get("INTERVAL")
 
-        start_dt = datetime.strptime(start_date, "%Y%m%d")
-        end_dt = datetime.strptime(end_date, "%Y%m%d")
+        # start_dt = datetime.strptime(start_date, "%Y%m%d")
+        # end_dt = datetime.strptime(end_date, "%Y%m%d")
 
         extraction_manager = ExtractionManager()
         successful_extractions = run_async_task(
@@ -65,8 +65,8 @@ def should_continue_data(**context):
             e
             for e in successful_extractions
             if (
-                e.start_date.date() == start_dt.date()
-                and e.end_date.date() == end_dt.date()
+                e.start_date.date() == start_date
+                and e.end_date.date() == end_date
                 and e.interval == interval
             )
         ]
