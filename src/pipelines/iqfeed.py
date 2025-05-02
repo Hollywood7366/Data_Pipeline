@@ -32,8 +32,8 @@ def historical(
 ):
     all_data = {}
     successful_tickers = []
-    current_start_date = None
-    current_end_date = None
+    ticker_start_date = None
+    ticker_end_date = None
 
     extraction_manager = ExtractionManager()
 
@@ -137,7 +137,7 @@ def historical(
 
         run_async_task(get_async_logs_script(successful_tickers))
         close_socket(sock)
-        return all_data, current_start_date, current_end_date
+        return all_data, ticker_start_date, ticker_end_date
     except Exception as e:
         logger.error(f"Error in historical data download: {e}")
         run_async_task(get_async_logs_script(successful_tickers))
@@ -145,7 +145,7 @@ def historical(
             close_socket(sock)
         except:
             pass
-        return {}, current_start_date, current_end_date
+        return {}, ticker_start_date, ticker_end_date
 
 
 def live(host: str, port: int, ticker: str):
