@@ -8,9 +8,9 @@ from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from dotenv import load_dotenv
 
-from src.pipelines.iqfeed import get_tick_historical
 from dags.short_circuits.apply import should_continue_data
 from src.config.config import config as cn
+from src.pipelines.iqfeed import get_tick_historical
 from utils.CONSTANTS import SYMBOLS_COMPLETE
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
@@ -36,7 +36,7 @@ dag = DAG(
     dag_id=f"HIST_TICK_DATA_{os.getenv('HIST_TICK_DATA','v1_0')}",
     default_args=default_args,
     description="Fetch historical tick data from IQFeed and save as parquet files per symbol",
-    # schedule_interval="0 1 * * *", 
+    # schedule_interval="0 1 * * *",
     catchup=False,
     tags=[
         "iqfeed",
@@ -61,14 +61,15 @@ def download_tick_data_custom():
     data = get_tick_historical(
         host=cn.IQFEED_HOST,
         port=int(cn.IQFEED_PORT),
-        start_date=Variable.get("START_DATE"),
+        start_date=Variable.get("TICK_START_DATE"),
         end_date=(
-            Variable.get("END_DATE") if Variable.get("END_DATE") else None
+            Variable.get("TICK_END_DATE") if Variable.get("TICK_END_DATE") else None
         ),
-        interval=Variable.get("INTERVAL"),
+        interval=Variable.get("TICK_INTERVAL"),
         symbols=symbols,
         records=df,
     )
+
 
 download_task = PythonOperator(
     task_id="download_historical_tick_data",

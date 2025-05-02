@@ -60,7 +60,9 @@ def receive_data(sock: socket.socket, recv_buffer=4096) -> str:
     return buffer
 
 
-def data_to_parquet(data: str, sym: str, interval: str, records, ticks=False) -> None:
+def data_to_parquet(
+    data: str, sym: str, interval: str, records, ticks=False
+) -> None:
     filtered_records = records.filter(pl.col("symbol") == sym)
     if filtered_records.height == 0:
         logger.warning(
@@ -107,7 +109,7 @@ def data_to_parquet(data: str, sym: str, interval: str, records, ticks=False) ->
                 exchange=exchange,
                 security_type=security_type,
                 timeframe=interval,
-                symbol=sym, 
+                symbol=sym,
                 data=df,
             )
             logger.info(f"Created new file: {file_path}")
@@ -141,7 +143,9 @@ def _parse_raw_data(data: str) -> list:
     lines = [
         line
         for line in data.split("\n")
-        if not line.startswith("S,") and not line.startswith("E,") and line.strip()
+        if not line.startswith("S,")
+        and not line.startswith("E,")
+        and line.strip()
     ]
 
     if not lines:
@@ -150,16 +154,16 @@ def _parse_raw_data(data: str) -> list:
     formatted_rows = []
     for line in lines:
         parts = line.split(",")
-        
+
         if parts[0] == "1" and len(parts) > 8:
             formatted_rows.append(parts)
             continue
-            
+
         if len(parts) >= 8 and parts[0] in ["LH", "DT", "T"]:
             row = parts[1:]
         else:
             row = parts
-            
+
         if len(row) == 8:
             formatted_rows.append(row)
 
@@ -194,22 +198,23 @@ def _create_dataframe(formatted_rows: list) -> pl.DataFrame:
 
     return df
 
+
 def _create_ticks_dataframe(formatted_rows: list) -> pl.DataFrame:
     headers = [
-        "record_id",          
-        "message_type",       
-        "timestamp",          
-        "last_price",         
-        "last_size",          
-        "total_volume",       
-        "bid",                
-        "ask",                
-        "tick_id",            
-        "trade_conditions",   
+        "record_id",
+        "message_type",
+        "timestamp",
+        "last_price",
+        "last_size",
+        "total_volume",
+        "bid",
+        "ask",
+        "tick_id",
+        "trade_conditions",
         "trade_market_center",
-        "trade_basis",        
-        "participant_id",     
-        "sequence"            
+        "trade_basis",
+        "participant_id",
+        "sequence",
     ]
 
     df = pl.DataFrame(formatted_rows, schema=headers, orient="row")
@@ -227,13 +232,17 @@ def _create_ticks_dataframe(formatted_rows: list) -> pl.DataFrame:
         pl.col("ask").cast(pl.Float64),
         pl.col("tick_id").cast(pl.Int64),
         pl.col("participant_id").cast(pl.Int64),
-        pl.col("sequence").cast(pl.Int64)
+        pl.col("sequence").cast(pl.Int64),
     ]
-    
-    conversion_cols.append(pl.col("timestamp").str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S%.f"))
+
+    conversion_cols.append(
+        pl.col("timestamp").str.strptime(
+            pl.Datetime, "%Y-%m-%d %H:%M:%S%.f"
+        )
+    )
     if not has_non_numeric:
         conversion_cols.append(pl.col("trade_basis").cast(pl.Int64))
-    
+
     df = df.with_columns(conversion_cols)
     df = df.with_columns(
         [
@@ -243,6 +252,7 @@ def _create_ticks_dataframe(formatted_rows: list) -> pl.DataFrame:
     )
 
     return df
+
 
 def _save_data_and_metadata(
     df: pl.DataFrame,
