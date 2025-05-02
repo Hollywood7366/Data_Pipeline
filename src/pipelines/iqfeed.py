@@ -57,11 +57,6 @@ def historical(
             end_date = yesterday_dt.strftime("%Y%m%d")
             logger.info(f"End date adjusted to previous day: {end_date}")
 
-        current_start_dt = start_dt
-        current_end_dt = end_dt
-        current_start_date = current_start_dt.strftime("%Y%m%d")
-        current_end_date = current_end_dt.strftime("%Y%m%d")
-
         for sym in tickers:
             if not backfill:
                 (
@@ -71,18 +66,17 @@ def historical(
                 ) = extraction_manager.should_process_ticker(
                     sym, start_dt, end_dt, interval
                 )
+                ticker_start_dt = adjusted_start_dt
+                ticker_end_dt = adjusted_end_dt
+
+                ticker_start_date = ticker_start_dt.strftime("%Y%m%d")
+                ticker_end_date = ticker_end_dt.strftime("%Y%m%d")
 
                 if not should_process:
                     logger.info(
                         f"Skipping {sym} - already processed for this date range"
                     )
                     continue
-
-                ticker_start_dt = adjusted_start_dt
-                ticker_end_dt = adjusted_end_dt
-
-                ticker_start_date = ticker_start_dt.strftime("%Y%m%d")
-                ticker_end_date = ticker_end_dt.strftime("%Y%m%d")
 
                 logger.info(
                     f"Processing {sym} from {ticker_start_date} to {ticker_end_date}"
