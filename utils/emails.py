@@ -5,7 +5,6 @@ from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from airflow.utils.log.logging_mixin import LoggingMixin
 from dotenv import load_dotenv
 
 from utils.util import base_path
@@ -15,8 +14,6 @@ load_dotenv(dotenv_path=f"{base_path()}/airflow.env")
 
 def get_task_logs(task_instance, try_number=None):
     try:
-        # logger = LoggingMixin().log
-
         if not try_number:
             try_number = task_instance.try_number
 
@@ -26,7 +23,6 @@ def get_task_logs(task_instance, try_number=None):
         task_id = task_instance.task_id
         run_id = task_instance.run_id
 
-        # log_base = os.path.expanduser(os.getenv('AIRFLOW__LOGGING__BASE_LOG_FOLDER', '~/logs'))
         log_file = os.path.join(
             "/opt/airflow/logs",
             f"dag_id={dag_id}",
@@ -202,9 +198,6 @@ def send_task_email(context):
         server.login(sender, password)
         server.send_message(msg)
         server.quit()
-        print(
-            f"Email notification sent for {dag_id}.{task_id} - Status: {status}"
-        )
     except Exception as e:
         print(f"Failed to send email: {str(e)}")
 
