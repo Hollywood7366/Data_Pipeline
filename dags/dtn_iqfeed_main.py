@@ -1,13 +1,13 @@
-import os
 import json
+import os
 from datetime import datetime, timedelta
 
 import polars as pl
 from airflow import DAG
 from airflow.models import Variable
+from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.operators.dummy import DummyOperator
 from dotenv import load_dotenv
 
 from dags.short_circuits.apply import should_continue_data
@@ -51,7 +51,7 @@ dag = DAG(
 
 def download_historical_data(interval, **kwargs):
     logger.info(f"Downloading historical data with interval {interval}")
-    
+
     if not os.path.exists(SYMBOLS_COMPLETE):
         raise FileNotFoundError("parquet not found")
 
@@ -75,16 +75,16 @@ def download_historical_data(interval, **kwargs):
     return {
         "current_start_date": ticker_start_date,
         "current_end_date": ticker_end_date,
-        "interval": interval
+        "interval": interval,
     }
 
 
 def check_should_continue(interval, ti, **kwargs):
     task_id = f"download_historical_data_{interval}"
     logger.info(f"Checking if should continue for interval {interval}")
-    
+
     task_result = ti.xcom_pull(task_ids=task_id)
-    
+
     if task_result:
         task_result["interval"] = interval
         return should_continue_data(task_instance=ti, **task_result)
@@ -92,7 +92,7 @@ def check_should_continue(interval, ti, **kwargs):
 
 
 intervals_str = Variable.get("INTERVAL")
-intervals = [interval.strip() for interval in intervals_str.split(',')]
+intervals = [interval.strip() for interval in intervals_str.split(",")]
 
 start = DummyOperator(task_id="start", dag=dag)
 end = DummyOperator(task_id="end", dag=dag)
@@ -104,7 +104,7 @@ for interval in intervals:
         op_kwargs={"interval": interval},
         dag=dag,
     )
-    
+
     check_task = ShortCircuitOperator(
         task_id=f"check_if_should_continue_{interval}",
         python_callable=check_should_continue,
@@ -112,7 +112,7 @@ for interval in intervals:
         provide_context=True,
         dag=dag,
     )
-    
+
     trigger_task = TriggerDagRunOperator(
         task_id=f"trigger_self_if_not_complete_{interval}",
         trigger_dag_id=f"HIST_META_SYMBOLS_{os.getenv('HIST_META_SYMBOLS','v1_2')}",
@@ -120,5 +120,5 @@ for interval in intervals:
         reset_dag_run=False,
         dag=dag,
     )
-    
+
     start >> download_task >> check_task >> trigger_task >> end
