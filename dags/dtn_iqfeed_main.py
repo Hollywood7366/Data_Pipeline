@@ -1,4 +1,5 @@
 import os
+import json
 from datetime import datetime, timedelta
 
 import polars as pl
@@ -6,6 +7,7 @@ from airflow import DAG
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.operators.dummy import DummyOperator
 from dotenv import load_dotenv
 
 from dags.short_circuits.apply import should_continue_data
@@ -47,7 +49,9 @@ dag = DAG(
 )
 
 
-def download_all_symbols():
+def download_historical_data(interval, **kwargs):
+    logger.info(f"Downloading historical data with interval {interval}")
+    
     if not os.path.exists(SYMBOLS_COMPLETE):
         raise FileNotFoundError("parquet not found")
 
@@ -64,34 +68,57 @@ def download_all_symbols():
         end_date=(
             Variable.get("END_DATE") if Variable.get("END_DATE") else None
         ),
-        interval=Variable.get("INTERVAL"),
+        interval=interval,
         tickers=symbols,
         records=df,
     )
     return {
         "current_start_date": ticker_start_date,
-        "current_end_date": ticker_end_date
+        "current_end_date": ticker_end_date,
+        "interval": interval
     }
 
-download_task = PythonOperator(
-    task_id="download_historical_data",
-    python_callable=download_all_symbols,
-    dag=dag,
-)
 
-check_complete_task = ShortCircuitOperator(
-    task_id="check_if_should_continue",
-    python_callable=should_continue_data,
-    provide_context=True,
-    dag=dag,
-)
+def check_should_continue(interval, ti, **kwargs):
+    task_id = f"download_historical_data_{interval}"
+    logger.info(f"Checking if should continue for interval {interval}")
+    
+    task_result = ti.xcom_pull(task_ids=task_id)
+    
+    if task_result:
+        task_result["interval"] = interval
+        return should_continue_data(task_instance=ti, **task_result)
+    return False
 
-trigger_self_task = TriggerDagRunOperator(
-    task_id="trigger_self_if_not_complete",
-    trigger_dag_id=f"HIST_META_SYMBOLS_{os.getenv('HIST_META_SYMBOLS','v1_2')}",
-    wait_for_completion=False,
-    reset_dag_run=False,
-    dag=dag,
-)
 
-download_task >> check_complete_task >> trigger_self_task
+intervals_str = Variable.get("INTERVAL")
+intervals = [interval.strip() for interval in intervals_str.split(',')]
+
+start = DummyOperator(task_id="start", dag=dag)
+end = DummyOperator(task_id="end", dag=dag)
+
+for interval in intervals:
+    download_task = PythonOperator(
+        task_id=f"download_historical_data_{interval}",
+        python_callable=download_historical_data,
+        op_kwargs={"interval": interval},
+        dag=dag,
+    )
+    
+    check_task = ShortCircuitOperator(
+        task_id=f"check_if_should_continue_{interval}",
+        python_callable=check_should_continue,
+        op_kwargs={"interval": interval},
+        provide_context=True,
+        dag=dag,
+    )
+    
+    trigger_task = TriggerDagRunOperator(
+        task_id=f"trigger_self_if_not_complete_{interval}",
+        trigger_dag_id=f"HIST_META_SYMBOLS_{os.getenv('HIST_META_SYMBOLS','v1_2')}",
+        wait_for_completion=False,
+        reset_dag_run=False,
+        dag=dag,
+    )
+    
+    start >> download_task >> check_task >> trigger_task >> end
