@@ -15,16 +15,16 @@ from utils.CONSTANTS import CREDENTIALS_PATH
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
 
-load_dotenv(dotenv_path="/opt/airflow/.env")
+load_dotenv(dotenv_path="/opt/airflow/src/.env")
 logger = Logger(name="iqfeed", log_dir="data/logs")
 
 default_args = {
-    "owner": "Sarim Sikander",
+    "owner": "Nick",
     "start_date": datetime(2025, 4, 1),
     "email_on_failure": True,
     "email_on_success": True,
     "email_on_retry": False,
-    "email": "sarimsikander24@gmail.com",
+    "email": "hollywood7366@gmail.com",
     "on_failure_callback": send_dag_failure_email,
     "on_success_callback": send_dag_success_email,
     "retries": 3,

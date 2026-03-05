@@ -11,7 +11,7 @@ from src.pipelines.transformations.misc import ParquetDatabaseHandler
 from utils.CONSTANTS import SYMBOLS_COMPLETE
 from utils.logging import Logger
 
-load_dotenv(dotenv_path="/opt/airflow/.env")
+load_dotenv(dotenv_path="/opt/airflow/src/.env")
 
 logger = Logger(name="iqfeed_backfill", log_dir="data/logs")
 

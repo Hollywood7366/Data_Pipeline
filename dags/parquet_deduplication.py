@@ -11,17 +11,17 @@ from utils.CONSTANTS import STORAGE_DIR
 from utils.emails import send_dag_failure_email
 from utils.logging import Logger
 
-load_dotenv(dotenv_path="/opt/airflow/.env")
+load_dotenv(dotenv_path="/opt/airflow/src/.env")
 logger = Logger(
     name="dtn_iqfeed_deduplication", log_dir="/opt/airflow/logs"
 )
 
 default_args = {
-    "owner": "Sarim Sikander",
+    "owner": "Nick",
     "start_date": datetime(2025, 4, 1),
     "email_on_failure": True,
     "email_on_retry": False,
-    "email": "sarimsikander24@gmail.com",
+    "email": "hollywood7366@gmail.com",
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
     "on_failure_callback": send_dag_failure_email,

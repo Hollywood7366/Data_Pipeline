@@ -20,7 +20,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from utils.atomic_creator import AtomicFileUpdate
 from utils.logging import Logger
 
-load_dotenv(dotenv_path="/opt/airflow/.env")
+load_dotenv(dotenv_path="/opt/airflow/src/.env")
 
 logger = Logger(name="dtn_iqfeed_scraper", log_dir="/opt/airflow/logs")
 

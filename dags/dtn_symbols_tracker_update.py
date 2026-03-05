@@ -19,17 +19,17 @@ from utils.CONSTANTS import CREDENTIALS_PATH, SYMBOLS_COMPLETE, SYMBOLS_RAW
 from utils.emails import send_dag_failure_email, send_dag_success_email
 from utils.logging import Logger
 
-load_dotenv(dotenv_path="/opt/airflow/.env")
+load_dotenv(dotenv_path="/opt/airflow/src/.env")
 
 logger = Logger(name="iqfeed", log_dir="data/logs")
 
 default_args = {
-    "owner": "Sarim Sikander",
+    "owner": "Nick",
     "start_date": datetime(2025, 4, 1),
     "email_on_failure": True,
     "email_on_success": True,
     "email_on_retry": False,
-    "email": "sarimsikander24@gmail.com",
+    "email": "hollywood7366@gmail.com",
     "on_failure_callback": send_dag_failure_email,
     "on_success_callback": send_dag_success_email,
     "retries": 3,
@@ -65,8 +65,8 @@ async def fetch_symbols_from_sheet():
 
     if success:
         df = pl.read_parquet(SYMBOLS_RAW)
-        result_df = parquet_columns_naming(df)
-        symbols = result_df["column_0"].to_list()
+        # GoogleSheetSync saves with proper column names from sheet headers
+        symbols = df[df.columns[0]].to_list()
 
         if not symbols:
             logger.info("No symbols found in sheet.")
@@ -117,6 +117,15 @@ async def fetch_and_save_db_records(symbols):
                 )
 
             processed_symbols.add(symbol)
+
+    for symbol in symbols:
+        if symbol not in processed_symbols:
+            records.append({
+                "symbol": symbol, "description": "", "security_type": "",
+                "exchange": "", "listed_market": "",
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            })
+            logger.warning(f"Symbol {symbol} not in any DB table — preserving from sheet")
 
     if not records:
         logger.info("No matching records found in DB.")
